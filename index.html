@@ -1,0 +1,2049 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="MCD Merise v5.1 de Bail Manager : schéma interactif, entités, associations et règles de gestion.">
+<title>MCD Bail Manager</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : en-tête fin, onglets, puis le schéma dans un cadre défilable avec un panneau de lecture à droite (collé en bas sur téléphone). */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --paper: #ffffff;
+  --ink: #1b2430;
+  --text: #1b2430;
+  --muted: #566272;
+  --line: #d3d9e1;
+  --accent: #1d5fc4;
+  --accent-soft: #e3edfb;
+  --warn: #8a5a00;
+  --warn-soft: #fff3d6;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1319; --surface: #171d26; --paper: #171d26; --ink: #d9e0ea; --text: #e4e9f0;
+    --muted: #93a0b2; --line: #2b3441; --accent: #7db2ff; --accent-soft: #1c2c45;
+    --warn: #f0c36a; --warn-soft: #2e2512; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1319; --surface: #171d26; --paper: #171d26; --ink: #d9e0ea; --text: #e4e9f0;
+  --muted: #93a0b2; --line: #2b3441; --accent: #7db2ff; --accent-soft: #1c2c45;
+  --warn: #f0c36a; --warn-soft: #2e2512; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); padding-inline: 16px; padding-block: 16px 32px; }
+.wrap { max-width: 1500px; margin-inline: auto; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 14px; }
+h1 { font-size: 1.55rem; line-height: 1.2; font-weight: 600; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.meta { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab { font: inherit; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.tab:hover { color: var(--text); background: var(--surface); }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--surface); border-color: var(--line); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 10px; }
+.bar input[type="search"] { flex: 1 1 220px; min-width: 0; max-width: 340px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.btn { font: inherit; font-weight: 500; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.hint { color: var(--muted); font-size: 0.85rem; flex: 1 1 260px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+.viewport { height: min(78vh, 920px); overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; cursor: grab; overscroll-behavior: contain; }
+.viewport.drag { cursor: grabbing; user-select: none; }
+#mcd { display: block; }
+.node { cursor: pointer; transition: opacity 0.15s; }
+.node.dim { opacity: 0.12; }
+.node.sel { --ink: var(--accent); }
+.node.sel rect[stroke-width="1.5"], .node.sel path[stroke-width="1.5"], .node.sel polygon[stroke-width="1.5"] { stroke-width: 3; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-height: min(78vh, 920px); overflow: auto; position: sticky; top: 8px; }
+.panel h2 { font: 600 1rem/1.3 var(--mono); margin: 0 0 2px; word-break: break-word; }
+.kind { display: inline-block; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 1px 7px; margin-bottom: 8px; }
+.panel h3 { font-size: 0.74rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.panel ul, .attrs { list-style: none; margin: 0; padding: 0; }
+.attrs li { font: 0.84rem/1.55 var(--mono); word-break: break-word; }
+.attrs li.id { text-decoration: underline; text-underline-offset: 3px; }
+.link { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; word-break: break-word; }
+.rel-list li { padding: 5px 0; border-top: 1px solid var(--line); font-size: 0.88rem; }
+.rel-list li:first-child { border-top: 0; }
+.card { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+.sentence { color: var(--muted); font-size: 0.84rem; display: block; }
+.tagline { font-size: 0.82rem; color: var(--muted); margin: 6px 0 0; }
+.empty { color: var(--muted); }
+.empty strong { color: var(--text); font-weight: 600; }
+section[hidden] { display: none; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+.ecard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.ecard h2 { font: 600 0.95rem/1.3 var(--mono); margin: 0 0 6px; word-break: break-word; }
+.ecard .chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 0.8rem; color: var(--muted); }
+.ecard .sub { font-size: 0.8rem; color: var(--muted); margin: 0 0 6px; }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 0.88rem; }
+th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.mono { font-family: var(--mono); font-size: 0.82rem; word-break: break-word; }
+pre.src { margin: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: auto; font: 0.8rem/1.55 var(--mono); max-height: 74vh; tab-size: 4; }
+.note { color: var(--muted); font-size: 0.88rem; margin: 0 0 10px; max-width: 75ch; }
+.rulesbox { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 18px 16px; max-width: 980px; }
+.rulesbox h3 { font-size: 1rem; margin: 22px 0 6px; }
+.rulesbox h4 { font-size: 0.78rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+.rulesbox p { margin: 6px 0; max-width: 80ch; }
+.callout { background: var(--warn-soft); color: var(--text); border-left: 3px solid var(--warn); border-radius: 4px; padding: 8px 12px; margin: 12px 0 0; }
+.callout p { margin: 2px 0; font-size: 0.88rem; }
+ul.rules { list-style: none; margin: 0; padding: 0; }
+ul.rules li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
+ul.rules li:first-child { border-top: 0; }
+.code { font: 500 0.8rem/1.6 var(--mono); color: var(--accent); word-break: break-word; }
+@media (max-width: 900px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .panel { position: sticky; bottom: 8px; top: auto; max-height: 34vh; box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.18); }
+  .viewport { height: 58vh; }
+  ul.rules li { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .node { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>MCD Bail Manager</h1>
+      <p class="meta">Modèle conceptuel de données (Merise), version 5.1 · 32 entités · 56 associations · 3 spécialisations</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Vues">
+      <button class="tab" role="tab" id="t-schema" aria-selected="true" data-tab="schema">Schéma</button>
+      <button class="tab" role="tab" id="t-ents" aria-selected="false" data-tab="ents">Entités</button>
+      <button class="tab" role="tab" id="t-assoc" aria-selected="false" data-tab="assoc">Associations</button>
+      <button class="tab" role="tab" id="t-rules" aria-selected="false" data-tab="rules">Règles</button>
+      <button class="tab" role="tab" id="t-src" aria-selected="false" data-tab="src">Source Mocodo</button>
+    </div>
+  </header>
+
+  <section id="p-schema" role="tabpanel" aria-labelledby="t-schema">
+    <div class="bar">
+      <input type="search" id="q" list="names" placeholder="Chercher une entité ou une association" aria-label="Chercher une entité ou une association" autocomplete="off">
+      <datalist id="names"></datalist>
+      <button class="btn" id="zout" aria-label="Réduire">−</button>
+      <button class="btn" id="zin" aria-label="Agrandir">+</button>
+      <button class="btn" id="zfit">Ajuster à la largeur</button>
+      <button class="btn" id="zreset">Tout afficher</button>
+      <span class="hint">Cliquez sur une entité, une association ou un triangle de spécialisation pour isoler ses liens. Ctrl + molette pour zoomer, glisser pour déplacer.</span>
+    </div>
+    <div class="stage">
+      <div class="viewport" id="vp"><svg id="mcd" viewBox="0 0 2868 1744" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma du MCD Bail Manager">
+<rect x="0" y="0" width="2868" height="1744" stroke="none" stroke-width="0" style="fill:var(--paper)"/>
+
+<g class="node inh" data-n="CONTRAT_PARENT_#1" tabindex="0">
+	<line x1="1200" y1="511" x2="2259" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<polygon points="1311 487.0 1321.46 478.6 1318.82 485.31 1324.0 490.33" stroke-width="0" style="fill:var(--ink)"/>
+	<line x1="2057" y1="511" x2="2259" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<polygon points="2259 255.44 2236 295.28 2282 295.28" stroke-width="1.5" style="stroke:var(--ink);fill:var(--paper)"/>
+		<text x="2259" y="287" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)"></text>
+	</g>
+</g>
+
+<g class="node inh" data-n="DOCUMENT_FINANCIER_PARENT_#2" tabindex="0">
+	<line x1="2499" y1="511" x2="2499" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<polygon points="2499 449 2493 437 2499 441 2505 437" stroke-width="0" style="fill:var(--ink)"/>
+	<line x1="2259" y1="511" x2="2499" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2259" y1="107" x2="2499" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<polygon points="2499 255.44 2476 295.28 2522 295.28" stroke-width="1.5" style="stroke:var(--ink);fill:var(--paper)"/>
+		<text x="2490" y="287" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">XT</text>
+	</g>
+</g>
+
+<g class="node inh" data-n="MOYEN_ENCAISSEMENT_PARENT_#3" tabindex="0">
+	<line x1="565" y1="1534" x2="565" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<polygon points="565 1569 571 1581 565 1577 559 1581" stroke-width="0" style="fill:var(--ink)"/>
+	<line x1="346" y1="1664" x2="565" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="747" y1="1664" x2="565" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<polygon points="565 1637.44 542 1677.28 588 1677.28" stroke-width="1.5" style="stroke:var(--ink);fill:var(--paper)"/>
+		<text x="561" y="1669" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">X</text>
+	</g>
+</g>
+
+<g class="node assoc" data-n="RESILIER" tabindex="0">
+	<line x1="1200" y1="511" x2="346" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="511" x2="346" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M373 81 a14 14 90 0 1 14 14 V107 h-82 V95 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M387 107 v12 a14 14 90 0 1 -14 14 H319 a14 14 90 0 1 -14 -14 V107 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="305" y="81" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="305" y1="107" x2="387" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="312" y="99.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RESILIER</text>
+	</g>
+	<text x="1061" y="470.79" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="173.05" y="387" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="PROLONGER" tabindex="0">
+	<line x1="1200" y1="511" x2="1010" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="565" y1="282" x2="1010" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1042 81 a14 14 90 0 1 14 14 V107 h-92 V95 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1056 107 v12 a14 14 90 0 1 -14 14 H978 a14 14 90 0 1 -14 -14 V107 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="964" y="81" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="964" y1="107" x2="1056" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="972" y="99.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PROLONGER</text>
+	</g>
+	<text x="1134.07" y="360" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="719" y="236.33" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="ALERTER" tabindex="0">
+	<line x1="1851" y1="107" x2="1674" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="107" x2="1674" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1697 81 a14 14 90 0 1 14 14 V107 h-74 V95 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1711 107 v12 a14 14 90 0 1 -14 14 H1651 a14 14 90 0 1 -14 -14 V107 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1637" y="81" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1637" y1="107" x2="1711" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1644" y="99.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ALERTER</text>
+	</g>
+	<text x="1716" y="99" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1580" y="123" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="QUITTANCER" tabindex="0">
+	<line x1="1851" y1="107" x2="2057" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2259" y1="107" x2="2057" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2093 81 a14 14 90 0 1 14 14 V107 h-100 V95 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2107 107 v12 a14 14 90 0 1 -14 14 H2021 a14 14 90 0 1 -14 -14 V107 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2007" y="81" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2007" y1="107" x2="2107" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2015" y="99.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">QUITTANCER</text>
+	</g>
+	<text x="1963" y="123" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2187" y="123" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="MODIFIER" tabindex="0">
+	<line x1="1200" y1="511" x2="2731" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2731" y1="282" x2="2731" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2758 81 a14 14 90 0 1 14 14 V107 h-82 V95 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2772 107 v12 a14 14 90 0 1 -14 14 H2704 a14 14 90 0 1 -14 -14 V107 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2690" y="81" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2690" y1="107" x2="2772" y2="107" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2697" y="99.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MODIFIER</text>
+	</g>
+	<text x="1316" y="495.67" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2736" y="167" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="DECIDER" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="565" y1="282" x2="346" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M369 256 a14 14 90 0 1 14 14 V282 h-74 V270 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M383 282 v12 a14 14 90 0 1 -14 14 H323 a14 14 90 0 1 -14 -14 V282 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="309" y="256" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="309" y1="282" x2="383" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="316" y="274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DECIDER</text>
+	</g>
+	<text x="694.66" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="388" y="274" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="PRODUIRE" tabindex="0">
+	<line x1="565" y1="282" x2="1010" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="511" x2="1010" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1037 256 a14 14 90 0 1 14 14 V282 h-82 V270 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1051 282 v12 a14 14 90 0 1 -14 14 H983 a14 14 90 0 1 -14 -14 V282 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="969" y="256" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="969" y1="282" x2="1051" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="976" y="274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PRODUIRE</text>
+	</g>
+	<text x="719" y="298" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+	<text x="1061" y="387.07" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="CONSTATER" tabindex="0">
+	<line x1="1200" y1="511" x2="1200" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="107" x2="1200" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1232 256 a14 14 90 0 1 14 14 V282 h-92 V270 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1246 282 v12 a14 14 90 0 1 -14 14 H1168 a14 14 90 0 1 -14 -14 V282 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1154" y="256" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1154" y1="282" x2="1246" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1162" y="274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONSTATER</text>
+	</g>
+	<text x="1205" y="360" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1205" y="203" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="MOTIVER" tabindex="0">
+	<line x1="1200" y1="511" x2="1485" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="107" x2="1485" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1508 256 a14 14 90 0 1 14 14 V282 h-74 V270 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1522 282 v12 a14 14 90 0 1 -14 14 H1462 a14 14 90 0 1 -14 -14 V282 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1448" y="256" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1448" y1="282" x2="1522" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1455" y="274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MOTIVER</text>
+	</g>
+	<text x="1316" y="431.82" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1490" y="221" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="GENERER" tabindex="0">
+	<line x1="1200" y1="511" x2="1674" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1851" y1="107" x2="1674" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1697 256 a14 14 90 0 1 14 14 V282 h-74 V270 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1711 282 v12 a14 14 90 0 1 -14 14 H1651 a14 14 90 0 1 -14 -14 V282 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1637" y="256" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1637" y1="282" x2="1711" y2="282" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1644" y="274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">GENERER</text>
+	</g>
+	<text x="1316" y="469.59" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1795.38" y="176" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+	<line x1="1795.38" y1="175" x2="1818.38" y2="175" stroke-width="1" style="stroke:var(--ink)"/>
+</g>
+
+<g class="node assoc" data-n="INITIER" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="565" y1="282" x2="346" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M369 485 a14 14 90 0 1 14 14 V511 h-74 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M383 511 v12 a14 14 90 0 1 -14 14 H323 a14 14 90 0 1 -14 -14 V511 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="309" y="485" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="309" y1="511" x2="383" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="316" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">INITIER</text>
+	</g>
+	<text x="675.94" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="443.61" y="423" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="UTILISER" tabindex="0">
+	<line x1="747" y1="1211" x2="565" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="747" y1="511" x2="565" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M592 485 a14 14 90 0 1 14 14 V511 h-82 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M606 511 v12 a14 14 90 0 1 -14 14 H538 a14 14 90 0 1 -14 -14 V511 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="524" y="485" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="524" y1="511" x2="606" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="531" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">UTILISER</text>
+	</g>
+	<text x="717.49" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="625" y="503" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="CONCERNER" tabindex="0">
+	<line x1="1200" y1="511" x2="1010" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="747" y1="511" x2="1010" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1042 485 a14 14 90 0 1 14 14 V511 h-92 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1056 511 v12 a14 14 90 0 1 -14 14 H978 a14 14 90 0 1 -14 -14 V511 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="964" y="485" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="964" y1="511" x2="1056" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="972" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONCERNER</text>
+	</g>
+	<text x="1061" y="527" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="846" y="527" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="PRECEDER" tabindex="0">
+	<path d="M1200 511 C1212 479 1370 479 1674 511" fill="none" stroke-width="1" style="stroke:var(--ink)"/>
+	<path d="M1200 511 C1212 543 1370 543 1674 511" fill="none" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1701 485 a14 14 90 0 1 14 14 V511 h-82 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1715 511 v12 a14 14 90 0 1 -14 14 H1647 a14 14 90 0 1 -14 -14 V511 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1633" y="485" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1633" y1="511" x2="1715" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1640" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PRECEDER</text>
+	</g>
+	<text x="1316" y="503" font-family="Courier New, Courier, monospace" font-size="12" onmouseover="show_8ddaaf81(evt,'ancien')" onmouseout="hide_8ddaaf81(evt)" style="cursor: pointer;" style="fill:var(--ink)">0,1</text>
+	<text x="1316" y="527" font-family="Courier New, Courier, monospace" font-size="12" onmouseover="show_8ddaaf81(evt,'nouveau')" onmouseout="hide_8ddaaf81(evt)" style="cursor: pointer;" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="AFFECTER" tabindex="0">
+	<line x1="1674" y1="1036" x2="1851" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1851" y1="107" x2="1851" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1908 485 a14 14 90 0 1 14 14 V511 h-142 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1922 511 v12 a14 14 90 0 1 -14 14 H1794 a14 14 90 0 1 -14 -14 V511 H142" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1780" y="485" width="142" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1780" y1="511" x2="1922" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1817" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">AFFECTER</text>
+		<text x="1787" y="529.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_affecte</text>
+	</g>
+	<text x="1687.74" y="912" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1856" y="176" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+</g>
+
+<g class="node assoc" data-n="FORMALISER" tabindex="0">
+	<line x1="2731" y1="282" x2="2731" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2499" y1="704" x2="2731" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2767 485 a14 14 90 0 1 14 14 V511 h-100 V499 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2781 511 v12 a14 14 90 0 1 -14 14 H2695 a14 14 90 0 1 -14 -14 V511 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2681" y="485" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2681" y1="511" x2="2781" y2="511" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2689" y="503.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">FORMALISER</text>
+	</g>
+	<text x="2736" y="405" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2540.87" y="643" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="DECLENCHER" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="511" x2="346" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M382 678 a14 14 90 0 1 14 14 V704 h-100 V692 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M396 704 v12 a14 14 90 0 1 -14 14 H310 a14 14 90 0 1 -14 -14 V704 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="296" y="678" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="296" y1="704" x2="396" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="304" y="696.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DECLENCHER</text>
+	</g>
+	<text x="647.22" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="241.29" y="643" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="CLOTURER" tabindex="0">
+	<line x1="1200" y1="511" x2="1010" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="834" x2="1010" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1037 678 a14 14 90 0 1 14 14 V704 h-82 V692 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1051 704 v12 a14 14 90 0 1 -14 14 H983 a14 14 90 0 1 -14 -14 V704 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="969" y="678" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="969" y1="704" x2="1051" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="976" y="696.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CLOTURER</text>
+	</g>
+	<text x="1061" y="622.75" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+	<text x="1061" y="768.82" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="AUDITER" tabindex="0">
+	<line x1="1200" y1="511" x2="1200" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="834" x2="1200" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1223 678 a14 14 90 0 1 14 14 V704 h-74 V692 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1237 704 v12 a14 14 90 0 1 -14 14 H1177 a14 14 90 0 1 -14 -14 V704 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1163" y="678" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1163" y1="704" x2="1237" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1170" y="696.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">AUDITER</text>
+	</g>
+	<text x="1205" y="670" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1350.5" y="764" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="RATTACHER" tabindex="0">
+	<line x1="1200" y1="511" x2="1485" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1674" y1="1036" x2="1485" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1517 678 a14 14 90 0 1 14 14 V704 h-92 V692 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1531 704 v12 a14 14 90 0 1 -14 14 H1453 a14 14 90 0 1 -14 -14 V704 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1439" y="678" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1439" y1="704" x2="1531" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1447" y="696.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RATTACHER</text>
+	</g>
+	<text x="1316" y="583.35" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1608.54" y="912" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="MATERIALISER" tabindex="0">
+	<line x1="1200" y1="511" x2="2259" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2499" y1="704" x2="2259" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2303 678 a14 14 90 0 1 14 14 V704 h-116 V692 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2317 704 v12 a14 14 90 0 1 -14 14 H2215 a14 14 90 0 1 -14 -14 V704 H116" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2201" y="678" width="116" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2201" y1="704" x2="2317" y2="704" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2208" y="696.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MATERIALISER</text>
+	</g>
+	<text x="1316" y="524.61" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2330" y="720" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+	<line x1="2330" y1="719" x2="2353" y2="719" stroke-width="1" style="stroke:var(--ink)"/>
+</g>
+
+<g class="node assoc" data-n="GARANTIR" tabindex="0">
+	<line x1="1200" y1="511" x2="137" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="1036" x2="137" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M164 808 a14 14 90 0 1 14 14 V834 h-82 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M178 834 v12 a14 14 90 0 1 -14 14 H110 a14 14 90 0 1 -14 -14 V834 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="96" y="808" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="96" y1="834" x2="178" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="103" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">GARANTIR</text>
+	</g>
+	<text x="1061" y="539.09" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+	<text x="142" y="993" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="NOTIFIER" tabindex="0">
+	<line x1="1200" y1="511" x2="346" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="346" y1="1036" x2="346" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M373 808 a14 14 90 0 1 14 14 V834 h-82 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M387 834 v12 a14 14 90 0 1 -14 14 H319 a14 14 90 0 1 -14 -14 V834 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="305" y="808" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="305" y1="834" x2="387" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="312" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">NOTIFIER</text>
+	</g>
+	<text x="1061" y="547.94" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="351" y="957" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="PARTICIPER" tabindex="0">
+	<line x1="747" y1="1211" x2="747" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="511" x2="747" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M842 781 a14 14 90 0 1 14 14 V807 h-218 V795 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M856 807 v66 a14 14 90 0 1 -14 14 H652 a14 14 90 0 1 -14 -14 V807 H218" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="638" y="781" width="218" height="106" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="638" y1="807" x2="856" y2="807" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="705" y="799.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PARTICIPER</text>
+		<text x="645" y="825.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_entree</text>
+		<text x="645" y="843.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_sortie</text>
+		<text x="645" y="861.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">pourcentage_contribution</text>
+		<text x="645" y="879.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">est_payeur_principal</text>
+	</g>
+	<text x="752" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1061" y="587.56" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+</g>
+
+<g class="node assoc" data-n="AVERTIR" tabindex="0">
+	<line x1="747" y1="1211" x2="1010" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="107" x2="1010" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1033 808 a14 14 90 0 1 14 14 V834 h-74 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1047 834 v12 a14 14 90 0 1 -14 14 H987 a14 14 90 0 1 -14 -14 V834 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="973" y="808" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="973" y1="834" x2="1047" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="980" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">AVERTIR</text>
+	</g>
+	<text x="811.52" y="1078" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1420.95" y="221" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="ATTESTER" tabindex="0">
+	<line x1="1674" y1="1036" x2="1851" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2259" y1="511" x2="1851" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1878 808 a14 14 90 0 1 14 14 V834 h-82 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1892 834 v12 a14 14 90 0 1 -14 14 H1824 a14 14 90 0 1 -14 -14 V834 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1810" y="808" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1810" y1="834" x2="1892" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1817" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ATTESTER</text>
+	</g>
+	<text x="1754.06" y="912" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2236.61" y="544" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="INFORMER" tabindex="0">
+	<line x1="1200" y1="511" x2="2057" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="1534" x2="2057" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2084 808 a14 14 90 0 1 14 14 V834 h-82 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2098 834 v12 a14 14 90 0 1 -14 14 H2030 a14 14 90 0 1 -14 -14 V834 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2016" y="808" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2016" y1="834" x2="2098" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2023" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">INFORMER</text>
+	</g>
+	<text x="1316" y="547.78" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1528.44" y="1446" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="ABOUTIR" tabindex="0">
+	<line x1="2057" y1="1386" x2="2259" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="511" x2="2259" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2282 808 a14 14 90 0 1 14 14 V834 h-74 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2296 834 v12 a14 14 90 0 1 -14 14 H2236 a14 14 90 0 1 -14 -14 V834 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2222" y="808" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2222" y1="834" x2="2296" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2229" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ABOUTIR</text>
+	</g>
+	<text x="2057.84" y="1307" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+	<text x="1316" y="539.23" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="ACCEPTER" tabindex="0">
+	<line x1="2499" y1="704" x2="2499" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="747" y1="1211" x2="2499" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2623 781 a14 14 90 0 1 14 14 V807 h-276 V795 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2637 807 v66 a14 14 90 0 1 -14 14 H2375 a14 14 90 0 1 -14 -14 V807 H276" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2361" y="781" width="276" height="106" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2361" y1="807" x2="2637" y2="807" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2465" y="799.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ACCEPTER</text>
+		<text x="2368" y="825.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">mode_acceptation</text>
+		<text x="2368" y="843.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_acceptation</text>
+		<text x="2368" y="861.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_reponse</text>
+		<text x="2368" y="879.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_refus_acceptation_contrat</text>
+	</g>
+	<text x="2504" y="773" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="871" y="1199.75" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+</g>
+
+<g class="node assoc" data-n="LOUER" tabindex="0">
+	<line x1="2731" y1="1211" x2="2731" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1200" y1="511" x2="2731" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2746 808 a14 14 90 0 1 14 14 V834 h-58 V822 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2760 834 v12 a14 14 90 0 1 -14 14 H2716 a14 14 90 0 1 -14 -14 V834 H58" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2702" y="808" width="58" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2702" y1="834" x2="2760" y2="834" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2710" y="826.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">LOUER</text>
+	</g>
+	<text x="2736" y="1096" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1316" y="528.03" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="INVITER" tabindex="0">
+	<line x1="747" y1="1211" x2="565" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="747" y1="511" x2="565" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M588 1010 a14 14 90 0 1 14 14 V1036 h-74 V1024 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M602 1036 v12 a14 14 90 0 1 -14 14 H542 a14 14 90 0 1 -14 -14 V1036 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="528" y="1010" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="528" y1="1036" x2="602" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="535" y="1028.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">INVITER</text>
+	</g>
+	<text x="600" y="1105.7" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="721.56" y="607" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="EFFECTUER" tabindex="0">
+	<line x1="747" y1="1211" x2="1010" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="834" x2="1010" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1042 1010 a14 14 90 0 1 14 14 V1036 h-92 V1024 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1056 1036 v12 a14 14 90 0 1 -14 14 H978 a14 14 90 0 1 -14 -14 V1036 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="964" y="1010" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="964" y1="1036" x2="1056" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="972" y="1028.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">EFFECTUER</text>
+	</g>
+	<text x="871" y="1142.72" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1316" y="889.29" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="CONSIGNER" tabindex="0">
+	<line x1="1674" y1="1036" x2="1200" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="834" x2="1200" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1232 1010 a14 14 90 0 1 14 14 V1036 h-92 V1024 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1246 1036 v12 a14 14 90 0 1 -14 14 H1168 a14 14 90 0 1 -14 -14 V1036 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1154" y="1010" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1154" y1="1036" x2="1246" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1162" y="1028.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONSIGNER</text>
+	</g>
+	<text x="1539" y="1052" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1397.13" y="912" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="GERER" tabindex="0">
+	<line x1="747" y1="1211" x2="2499" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2731" y1="1211" x2="2499" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2514 1010 a14 14 90 0 1 14 14 V1036 h-58 V1024 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2528 1036 v12 a14 14 90 0 1 -14 14 H2484 a14 14 90 0 1 -14 -14 V1036 H58" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2470" y="1010" width="58" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2470" y1="1036" x2="2528" y2="1036" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2478" y="1028.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">GERER</text>
+	</g>
+	<text x="871" y="1214.38" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2621" y="1159.46" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="TRACER" tabindex="0">
+	<line x1="137" y1="1036" x2="137" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="1386" x2="137" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M156 1185 a14 14 90 0 1 14 14 V1211 h-66 V1199 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M170 1211 v12 a14 14 90 0 1 -14 14 H118 a14 14 90 0 1 -14 -14 V1211 H66" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="104" y="1185" width="66" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="104" y1="1211" x2="170" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="111" y="1203.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">TRACER</text>
+	</g>
+	<text x="142" y="1087" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="142" y="1280" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="EMETTRE" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="346" y1="1036" x2="346" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M369 1185 a14 14 90 0 1 14 14 V1211 h-74 V1199 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M383 1211 v12 a14 14 90 0 1 -14 14 H323 a14 14 90 0 1 -14 -14 V1211 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="309" y="1185" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="309" y1="1211" x2="383" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="316" y="1203.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">EMETTRE</text>
+	</g>
+	<text x="600" y="1227" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="351" y="1123" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="VALIDER" tabindex="0">
+	<line x1="747" y1="1211" x2="1200" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1674" y1="1036" x2="1200" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1223 1185 a14 14 90 0 1 14 14 V1211 h-74 V1199 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1237 1211 v12 a14 14 90 0 1 -14 14 H1177 a14 14 90 0 1 -14 -14 V1211 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1163" y="1185" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1163" y1="1211" x2="1237" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1170" y="1203.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">VALIDER</text>
+	</g>
+	<text x="871" y="1227" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1539" y="1070.39" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="AVISER" tabindex="0">
+	<line x1="1674" y1="1036" x2="1851" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="1534" x2="1851" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1870 1185 a14 14 90 0 1 14 14 V1211 h-66 V1199 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1884 1211 v12 a14 14 90 0 1 -14 14 H1832 a14 14 90 0 1 -14 -14 V1211 H66" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1818" y="1185" width="66" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1818" y1="1211" x2="1884" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1825" y="1203.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">AVISER</text>
+	</g>
+	<text x="1786" y="1140.81" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1554.1" y="1446" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="JOURNALISER" tabindex="0">
+	<line x1="2731" y1="1211" x2="2499" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="834" x2="2499" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2539 1185 a14 14 90 0 1 14 14 V1211 h-108 V1199 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2553 1211 v12 a14 14 90 0 1 -14 14 H2459 a14 14 90 0 1 -14 -14 V1211 H108" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2445" y="1185" width="108" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2445" y1="1211" x2="2553" y2="1211" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2452" y="1203.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">JOURNALISER</text>
+	</g>
+	<text x="2621" y="1227" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1631" y="881.33" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="SAISIR" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="1386" x2="346" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M365 1360 a14 14 90 0 1 14 14 V1386 h-66 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M379 1386 v12 a14 14 90 0 1 -14 14 H327 a14 14 90 0 1 -14 -14 V1386 H66" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="313" y="1360" width="66" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="313" y1="1386" x2="379" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="320" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">SAISIR</text>
+	</g>
+	<text x="600" y="1258.35" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="257" y="1402" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="CONFIGURER" tabindex="0">
+	<line x1="747" y1="1211" x2="747" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="565" y1="1534" x2="747" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M783 1360 a14 14 90 0 1 14 14 V1386 h-100 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M797 1386 v12 a14 14 90 0 1 -14 14 H711 a14 14 90 0 1 -14 -14 V1386 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="697" y="1360" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="697" y1="1386" x2="797" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="705" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONFIGURER</text>
+	</g>
+	<text x="752" y="1352" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="586.09" y="1491" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="ENREGISTRER" tabindex="0">
+	<line x1="747" y1="1211" x2="1485" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1674" y1="1036" x2="1485" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1525 1360 a14 14 90 0 1 14 14 V1386 h-108 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1539 1386 v12 a14 14 90 0 1 -14 14 H1445 a14 14 90 0 1 -14 -14 V1386 H108" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1431" y="1360" width="108" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1431" y1="1386" x2="1539" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1438" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ENREGISTRER</text>
+	</g>
+	<text x="871" y="1233.04" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1612.15" y="1168" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="PREVENIR" tabindex="0">
+	<line x1="2057" y1="1386" x2="1851" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="1534" x2="1851" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1878 1360 a14 14 90 0 1 14 14 V1386 h-82 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1892 1386 v12 a14 14 90 0 1 -14 14 H1824 a14 14 90 0 1 -14 -14 V1386 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1810" y="1360" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1810" y1="1386" x2="1892" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1817" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PREVENIR</text>
+	</g>
+	<text x="1897" y="1402" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1605" y="1500.33" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="JOINDRE" tabindex="0">
+	<line x1="2057" y1="1386" x2="2259" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2259" y1="1211" x2="2259" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2282 1360 a14 14 90 0 1 14 14 V1386 h-74 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2296 1386 v12 a14 14 90 0 1 -14 14 H2236 a14 14 90 0 1 -14 -14 V1386 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2222" y="1360" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2222" y1="1386" x2="2296" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2229" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">JOINDRE</text>
+	</g>
+	<text x="2194" y="1402" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2264" y="1298" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="ANNONCER" tabindex="0">
+	<line x1="2731" y1="1211" x2="2499" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2499" y1="1534" x2="2499" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2526 1360 a14 14 90 0 1 14 14 V1386 h-82 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2540 1386 v12 a14 14 90 0 1 -14 14 H2472 a14 14 90 0 1 -14 -14 V1386 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2458" y="1360" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2458" y1="1386" x2="2540" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2465" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ANNONCER</text>
+	</g>
+	<text x="2621" y="1270.54" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2504" y="1437" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="ILLUSTRER" tabindex="0">
+	<line x1="2731" y1="1211" x2="2731" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2731" y1="1534" x2="2731" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2763 1360 a14 14 90 0 1 14 14 V1386 h-92 V1374 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2777 1386 v12 a14 14 90 0 1 -14 14 H2699 a14 14 90 0 1 -14 -14 V1386 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2685" y="1360" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2685" y1="1386" x2="2777" y2="1386" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2693" y="1378.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ILLUSTRER</text>
+	</g>
+	<text x="2736" y="1334" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2736" y="1473" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="CORRIGER" tabindex="0">
+	<path d="M137 1386 C181 1483.33 181 1532.67 137 1534" fill="none" stroke-width="1" style="stroke:var(--ink)"/>
+	<path d="M137 1386 C93 1483.33 93 1532.67 137 1534" fill="none" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M164 1508 a14 14 90 0 1 14 14 V1534 h-82 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M178 1534 v12 a14 14 90 0 1 -14 14 H110 a14 14 90 0 1 -14 -14 V1534 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="96" y="1508" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="96" y1="1534" x2="178" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="103" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CORRIGER</text>
+	</g>
+	<text x="141" y="1500" font-family="Courier New, Courier, monospace" font-size="12" onmouseover="show_8ddaaf81(evt,'initial')" onmouseout="hide_8ddaaf81(evt)" style="cursor: pointer;" style="fill:var(--ink)">0,N</text>
+	<text x="110" y="1500" font-family="Courier New, Courier, monospace" font-size="12" onmouseover="show_8ddaaf81(evt,'correctif')" onmouseout="hide_8ddaaf81(evt)" style="cursor: pointer;" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="ASSUMER" tabindex="0">
+	<line x1="747" y1="1211" x2="346" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="137" y1="1664" x2="346" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M369 1508 a14 14 90 0 1 14 14 V1534 h-74 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M383 1534 v12 a14 14 90 0 1 -14 14 H323 a14 14 90 0 1 -14 -14 V1534 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="309" y="1508" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="309" y1="1534" x2="383" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="316" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ASSUMER</text>
+	</g>
+	<text x="600" y="1304.85" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+	<text x="198" y="1640.37" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+</g>
+
+<g class="node assoc" data-n="EMPLOYER" tabindex="0">
+	<line x1="565" y1="1534" x2="747" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1674" y1="1036" x2="747" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M774 1508 a14 14 90 0 1 14 14 V1534 h-82 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M788 1534 v12 a14 14 90 0 1 -14 14 H720 a14 14 90 0 1 -14 -14 V1534 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="706" y="1508" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="706" y1="1534" x2="788" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="713" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">EMPLOYER</text>
+	</g>
+	<text x="652" y="1550" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1539" y="1089.67" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="JUSTIFIER" tabindex="0">
+	<line x1="1674" y1="1036" x2="1010" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1010" y1="1664" x2="1010" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1042 1508 a14 14 90 0 1 14 14 V1534 h-92 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1056 1534 v12 a14 14 90 0 1 -14 14 H978 a14 14 90 0 1 -14 -14 V1534 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="964" y="1508" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="964" y1="1534" x2="1056" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="972" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">JUSTIFIER</text>
+	</g>
+	<text x="1539" y="1113.91" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1015" y="1603" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="DISTRIBUER" tabindex="0">
+	<line x1="747" y1="1211" x2="1200" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="1534" x2="1200" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1236 1508 a14 14 90 0 1 14 14 V1534 h-100 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1250 1534 v12 a14 14 90 0 1 -14 14 H1164 a14 14 90 0 1 -14 -14 V1534 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1150" y="1508" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1150" y1="1534" x2="1250" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1158" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DISTRIBUER</text>
+	</g>
+	<text x="871" y="1293.27" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1342" y="1550" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="DEMANDER" tabindex="0">
+	<line x1="747" y1="1211" x2="1674" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1851" y1="1664" x2="1674" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1701 1508 a14 14 90 0 1 14 14 V1534 h-82 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1715 1534 v12 a14 14 90 0 1 -14 14 H1647 a14 14 90 0 1 -14 -14 V1534 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1633" y="1508" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1633" y1="1534" x2="1715" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1640" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DEMANDER</text>
+	</g>
+	<text x="871" y="1247.18" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1729" y="1605.4" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="DEPOSER" tabindex="0">
+	<line x1="747" y1="1211" x2="2057" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2057" y1="1386" x2="2057" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2080 1508 a14 14 90 0 1 14 14 V1534 h-74 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2094 1534 v12 a14 14 90 0 1 -14 14 H2034 a14 14 90 0 1 -14 -14 V1534 H74" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2020" y="1508" width="74" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2020" y1="1534" x2="2094" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2027" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DEPOSER</text>
+	</g>
+	<text x="871" y="1234.24" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2029" y="1473" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="RECEVOIR" tabindex="0">
+	<line x1="2499" y1="1534" x2="2259" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="2057" y1="1386" x2="2259" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2286 1508 a14 14 90 0 1 14 14 V1534 h-82 V1522 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2300 1534 v12 a14 14 90 0 1 -14 14 H2232 a14 14 90 0 1 -14 -14 V1534 H82" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2218" y="1508" width="82" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2218" y1="1534" x2="2300" y2="1534" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2225" y="1526.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RECEVOIR</text>
+	</g>
+	<text x="2385" y="1526" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="2131.45" y="1473" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node assoc" data-n="CONVOQUER" tabindex="0">
+	<line x1="1851" y1="1664" x2="1674" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1485" y1="1534" x2="1674" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M1706 1638 a14 14 90 0 1 14 14 V1664 h-92 V1652 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M1720 1664 v12 a14 14 90 0 1 -14 14 H1642 a14 14 90 0 1 -14 -14 V1664 H92" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="1628" y="1638" width="92" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="1628" y1="1664" x2="1720" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="1636" y="1656.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONVOQUER</text>
+	</g>
+	<text x="1729" y="1680" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1605" y="1610.35" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,1</text>
+</g>
+
+<g class="node assoc" data-n="SOLLICITER" tabindex="0">
+	<line x1="2499" y1="1534" x2="2259" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<line x1="1851" y1="1664" x2="2259" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+	<g>
+		<path d="M2295 1638 a14 14 90 0 1 14 14 V1664 h-100 V1652 a14 14 90 0 1 14 -14" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<path d="M2309 1664 v12 a14 14 90 0 1 -14 14 H2223 a14 14 90 0 1 -14 -14 V1664 H100" stroke-width="0" style="fill:var(--paper);stroke:var(--paper)"/>
+		<rect x="2209" y="1638" width="100" height="52" fill="none" rx="14" stroke-width="1.5" style="stroke:var(--ink)"/>
+		<line x1="2209" y1="1664" x2="2309" y2="1664" stroke-width="1" style="stroke:var(--ink)"/>
+		<text x="2217" y="1656.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">SOLLICITER</text>
+	</g>
+	<text x="2385" y="1576.8" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">0,N</text>
+	<text x="1950" y="1680" font-family="Courier New, Courier, monospace" font-size="12" style="fill:var(--ink)">1,1</text>
+</g>
+
+<g class="node ent" data-n="ETAT_DES_LIEUX" tabindex="0">
+	<g>
+		<rect x="1114" y="27" width="172" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1114" y="53" width="172" height="134" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1114" y="27" width="172" height="160" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1114" y1="53" x2="1286" y2="53" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1141" y="45.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ETAT_DES_LIEUX</text>
+	<text x="1119" y="71.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_etat_lieux</text>
+	<line x1="1119" y1="74" x2="1229" y2="74" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1119" y="89.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_etat_lieux</text>
+	<text x="1119" y="107.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_etat_lieux</text>
+	<text x="1119" y="125.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">observations</text>
+	<text x="1119" y="143.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">remarques_locataire</text>
+	<text x="1119" y="161.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_contestation</text>
+	<text x="1119" y="179.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_document</text>
+</g>
+
+<g class="node ent" data-n="RAPPEL" tabindex="0">
+	<g>
+		<rect x="1395" y="9" width="180" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1395" y="35" width="180" height="170" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1395" y="9" width="180" height="196" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1395" y1="35" x2="1575" y2="35" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1459" y="27.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RAPPEL</text>
+	<text x="1400" y="53.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_rappel</text>
+	<line x1="1400" y1="56" x2="1477" y2="56" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1400" y="71.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_rappel</text>
+	<text x="1400" y="89.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_rappel</text>
+	<text x="1400" y="107.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_prevue</text>
+	<text x="1400" y="125.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_envoi_rappel</text>
+	<text x="1400" y="143.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_rappel</text>
+	<text x="1400" y="161.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">canal</text>
+	<text x="1400" y="179.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">message</text>
+	<text x="1400" y="197.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">est_lue</text>
+</g>
+
+<g class="node ent" data-n="ECHEANCE" tabindex="0">
+	<g>
+		<rect x="1744" y="54" width="214" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1744" y="80" width="214" height="80" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1744" y="54" width="214" height="106" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1744" y1="80" x2="1958" y2="80" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1817" y="72.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ECHEANCE</text>
+	<text x="1749" y="98.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">periode</text>
+	<line x1="1749" y1="101" x2="1809" y2="101" stroke-width="1" stroke-dasharray="4" style="stroke:var(--ink)"/>
+	<text x="1749" y="116.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_echeance</text>
+	<text x="1749" y="134.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_loyer</text>
+	<text x="1749" y="152.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_charges_echeance</text>
+</g>
+
+<g class="node ent" data-n="QUITTANCE" tabindex="0">
+	<g>
+		<rect x="2215" y="90" width="88" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2215" y="116" width="88" height="8" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2215" y="90" width="88" height="34" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2215" y1="116" x2="2303" y2="116" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2221" y="108.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">QUITTANCE</text>
+</g>
+
+<g class="node ent" data-n="PROLONGATION" tabindex="0">
+	<g>
+		<rect x="416" y="157" width="298" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="416" y="183" width="298" height="224" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="416" y="157" width="298" height="250" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="416" y1="183" x2="714" y2="183" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="514" y="175.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PROLONGATION</text>
+	<text x="421" y="201.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_prolongation</text>
+	<line x1="421" y1="204" x2="548" y2="204" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="421" y="219.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_application_prolongation</text>
+	<text x="421" y="237.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_demande_prolongation</text>
+	<text x="421" y="255.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_fin_souhaitee</text>
+	<text x="421" y="273.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouvelle_date_fin</text>
+	<text x="421" y="291.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouveau_loyer_prolongation</text>
+	<text x="421" y="309.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouvelles_charges_prolongation</text>
+	<text x="421" y="327.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouveau_jour_echeance_prolongation</text>
+	<text x="421" y="345.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouvelle_duree_preavis</text>
+	<text x="421" y="363.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_decision_prolongation</text>
+	<text x="421" y="381.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_refus_prolongation</text>
+	<text x="421" y="399.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_prolongation</text>
+</g>
+
+<g class="node ent" data-n="AVENANT" tabindex="0">
+	<g>
+		<rect x="2603" y="175" width="256" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2603" y="201" width="256" height="188" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2603" y="175" width="256" height="214" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2603" y1="201" x2="2859" y2="201" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2701" y="193.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">AVENANT</text>
+	<text x="2608" y="219.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_avenant</text>
+	<line x1="2608" y1="222" x2="2693" y2="222" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2608" y="237.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_avenant</text>
+	<text x="2608" y="255.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_avenant</text>
+	<text x="2608" y="273.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_avenant</text>
+	<text x="2608" y="291.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_effet</text>
+	<text x="2608" y="309.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_avenant</text>
+	<text x="2608" y="327.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouveau_loyer_avenant</text>
+	<text x="2608" y="345.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouvelles_charges_avenant</text>
+	<text x="2608" y="363.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nouveau_jour_echeance_avenant</text>
+	<text x="2608" y="381.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_validation_avenant</text>
+</g>
+
+<g class="node ent" data-n="RESILIATION" tabindex="0">
+	<g>
+		<rect x="9" y="395" width="256" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="9" y="421" width="256" height="206" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="9" y="395" width="256" height="232" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="9" y1="421" x2="265" y2="421" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="90" y="413.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RESILIATION</text>
+	<text x="14" y="439.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_resiliation</text>
+	<line x1="14" y1="442" x2="133" y2="442" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="14" y="457.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_resiliation</text>
+	<text x="14" y="475.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">fondement_contractuel</text>
+	<text x="14" y="493.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_demande_resiliation</text>
+	<text x="14" y="511.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_notification_resiliation</text>
+	<text x="14" y="529.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_limite_regularisation</text>
+	<text x="14" y="547.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_effet_confirmee</text>
+	<text x="14" y="565.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_decision_resiliation</text>
+	<text x="14" y="583.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_resiliation</text>
+	<text x="14" y="601.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_justificatif</text>
+	<text x="14" y="619.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">commentaire_resiliation</text>
+</g>
+
+<g class="node ent" data-n="INVITATION" tabindex="0">
+	<g>
+		<rect x="653" y="431" width="188" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="653" y="457" width="188" height="134" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="653" y="431" width="188" height="160" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="653" y1="457" x2="841" y2="457" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="705" y="449.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">INVITATION</text>
+	<text x="658" y="475.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_invitation</text>
+	<line x1="658" y1="478" x2="768" y2="478" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="658" y="493.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">email_invite</text>
+	<text x="658" y="511.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">jeton_hash</text>
+	<text x="658" y="529.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_envoi_invitation</text>
+	<text x="658" y="547.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_expiration</text>
+	<text x="658" y="565.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_utilisation</text>
+	<text x="658" y="583.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_annulation</text>
+</g>
+
+<g class="node ent" data-n="CONTRAT" tabindex="0">
+	<g>
+		<rect x="1089" y="368" width="222" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1089" y="394" width="222" height="260" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1089" y="368" width="222" height="286" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1089" y1="394" x2="1311" y2="394" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1170" y="386.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONTRAT</text>
+	<text x="1094" y="412.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_contrat</text>
+	<line x1="1094" y1="415" x2="1179" y2="415" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1094" y="430.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_contrat</text>
+	<text x="1094" y="448.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_creation</text>
+	<text x="1094" y="466.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_contrat</text>
+	<text x="1094" y="484.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_activation</text>
+	<text x="1094" y="502.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_debut</text>
+	<text x="1094" y="520.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_fin_prevue</text>
+	<text x="1094" y="538.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">loyer_mensuel</text>
+	<text x="1094" y="556.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_charges_contrat</text>
+	<text x="1094" y="574.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">jour_echeance</text>
+	<text x="1094" y="592.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">duree_preavis</text>
+	<text x="1094" y="610.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_contrat</text>
+	<text x="1094" y="628.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_fin_effective</text>
+	<text x="1094" y="646.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_liberation_effective</text>
+</g>
+
+<g class="node ent" data-n="CONTRAT_REPRIS" tabindex="0">
+	<g>
+		<rect x="1992" y="476" width="130" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1992" y="502" width="130" height="44" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1992" y="476" width="130" height="70" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1992" y1="502" x2="2122" y2="502" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1998" y="494.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">CONTRAT_REPRIS</text>
+	<text x="1997" y="520.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_reprise</text>
+	<text x="1997" y="538.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">solde_reprise</text>
+</g>
+
+<g class="node ent" data-n="RECU" tabindex="0">
+	<g>
+		<rect x="2236" y="494" width="46" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2236" y="520" width="46" height="8" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2236" y="494" width="46" height="34" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2236" y1="520" x2="2282" y2="520" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2242" y="512.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">RECU</text>
+</g>
+
+<g class="node ent" data-n="DOCUMENT_FINANCIER" tabindex="0">
+	<g>
+		<rect x="2350" y="449" width="298" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2350" y="475" width="298" height="98" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2350" y="449" width="298" height="124" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2350" y1="475" x2="2648" y2="475" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2423" y="467.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DOCUMENT_FINANCIER</text>
+	<text x="2355" y="493.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_document_financier</text>
+	<line x1="2355" y1="496" x2="2533" y2="496" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2355" y="511.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_document</text>
+	<text x="2355" y="529.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_generation_document_financier</text>
+	<text x="2355" y="547.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_fichier_document_financier</text>
+	<text x="2355" y="565.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_document_financier</text>
+</g>
+
+<g class="node ent" data-n="DOCUMENT_CONTRAT" tabindex="0">
+	<g>
+		<rect x="2358" y="651" width="282" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2358" y="677" width="282" height="80" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2358" y="651" width="282" height="106" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2358" y1="677" x2="2640" y2="677" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2431" y="669.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DOCUMENT_CONTRAT</text>
+	<text x="2363" y="695.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">numero_version</text>
+	<line x1="2363" y1="698" x2="2482" y2="698" stroke-width="1" stroke-dasharray="4" style="stroke:var(--ink)"/>
+	<text x="2363" y="713.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_document_contrat</text>
+	<text x="2363" y="731.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_generation_document_contrat</text>
+	<text x="2363" y="749.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_fichier_document_contrat</text>
+</g>
+
+<g class="node ent" data-n="SOLDE_FIN_CONTRAT" tabindex="0">
+	<g>
+		<rect x="1089" y="754" width="222" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1089" y="780" width="222" height="134" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1089" y="754" width="222" height="160" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1089" y1="780" x2="1311" y2="780" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1128" y="772.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">SOLDE_FIN_CONTRAT</text>
+	<text x="1094" y="798.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_solde</text>
+	<line x1="1094" y1="801" x2="1162" y2="801" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1094" y="816.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_calcul</text>
+	<text x="1094" y="834.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">total_sommes_dues</text>
+	<text x="1094" y="852.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">total_paiements_valides</text>
+	<text x="1094" y="870.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_restitution_depot</text>
+	<text x="1094" y="888.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_restant</text>
+	<text x="1094" y="906.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_solde</text>
+</g>
+
+<g class="node ent" data-n="HISTORIQUE_OPERATION" tabindex="0">
+	<g>
+		<rect x="1344" y="772" width="282" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1344" y="798" width="282" height="98" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1344" y="772" width="282" height="124" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1344" y1="798" x2="1626" y2="798" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1401" y="790.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">HISTORIQUE_OPERATION</text>
+	<text x="1349" y="816.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_historique</text>
+	<line x1="1349" y1="819" x2="1459" y2="819" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1349" y="834.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_operation</text>
+	<text x="1349" y="852.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_operation</text>
+	<text x="1349" y="870.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">description_historique_operation</text>
+	<text x="1349" y="888.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">origine_operation</text>
+</g>
+
+<g class="node ent" data-n="DEPOT_GARANTIE" tabindex="0">
+	<g>
+		<rect x="72" y="1001" width="130" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="72" y="1027" width="130" height="44" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="72" y="1001" width="130" height="70" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="72" y1="1027" x2="202" y2="1027" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="78" y="1019.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DEPOT_GARANTIE</text>
+	<text x="77" y="1045.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_depot</text>
+	<line x1="77" y1="1048" x2="145" y2="1048" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="77" y="1063.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_prevu</text>
+</g>
+
+<g class="node ent" data-n="PREAVIS" tabindex="0">
+	<g>
+		<rect x="235" y="965" width="222" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="235" y="991" width="222" height="116" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="235" y="965" width="222" height="142" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="235" y1="991" x2="457" y2="991" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="316" y="983.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PREAVIS</text>
+	<text x="240" y="1009.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_preavis</text>
+	<line x1="240" y1="1012" x2="325" y2="1012" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="240" y="1027.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_notification_preavis</text>
+	<text x="240" y="1045.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_depart_proposee</text>
+	<text x="240" y="1063.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_depart_confirmee</text>
+	<text x="240" y="1081.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_preavis</text>
+	<text x="240" y="1099.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_preavis</text>
+</g>
+
+<g class="node ent" data-n="PAIEMENT" tabindex="0">
+	<g>
+		<rect x="1567" y="920" width="214" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1567" y="946" width="214" height="206" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1567" y="920" width="214" height="232" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1567" y1="946" x2="1781" y2="946" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1640" y="938.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PAIEMENT</text>
+	<text x="1572" y="964.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_paiement</text>
+	<line x1="1572" y1="967" x2="1666" y2="967" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1572" y="982.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_declaration</text>
+	<text x="1572" y="1000.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_paiement</text>
+	<text x="1572" y="1018.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_declare</text>
+	<text x="1572" y="1036.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant_valide</text>
+	<text x="1572" y="1054.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">mode_paiement</text>
+	<text x="1572" y="1072.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_transaction</text>
+	<text x="1572" y="1090.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">mode_saisie</text>
+	<text x="1572" y="1108.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_paiement</text>
+	<text x="1572" y="1126.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_validation_paiement</text>
+	<text x="1572" y="1144.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">commentaire_validation</text>
+</g>
+
+<g class="node ent" data-n="UTILISATEUR" tabindex="0">
+	<g>
+		<rect x="628" y="1086" width="238" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="628" y="1112" width="238" height="224" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="628" y="1086" width="238" height="250" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="628" y1="1112" x2="866" y2="1112" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="700" y="1104.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">UTILISATEUR</text>
+	<text x="633" y="1130.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_utilisateur</text>
+	<line x1="633" y1="1133" x2="752" y2="1133" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="633" y="1148.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nom</text>
+	<text x="633" y="1166.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">prenom</text>
+	<text x="633" y="1184.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">email</text>
+	<text x="633" y="1202.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">telephone</text>
+	<text x="633" y="1220.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">mot_de_passe_hash</text>
+	<text x="633" y="1238.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_utilisateur</text>
+	<text x="633" y="1256.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_compte</text>
+	<text x="633" y="1274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">tentatives_echec</text>
+	<text x="633" y="1292.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_blocage</text>
+	<text x="633" y="1310.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">jeton_reinitialisation_hash</text>
+	<text x="633" y="1328.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_expiration_jeton</text>
+</g>
+
+<g class="node ent" data-n="DOCUMENT_CANDIDATURE" tabindex="0">
+	<g>
+		<rect x="2106" y="1140" width="306" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2106" y="1166" width="306" height="116" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2106" y="1140" width="306" height="142" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2106" y1="1166" x2="2412" y2="1166" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2175" y="1158.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DOCUMENT_CANDIDATURE</text>
+	<text x="2111" y="1184.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_document_candidature</text>
+	<line x1="2111" y1="1187" x2="2306" y2="1187" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2111" y="1202.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nom_document</text>
+	<text x="2111" y="1220.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_document_candidature</text>
+	<text x="2111" y="1238.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_fichier_document_candidature</text>
+	<text x="2111" y="1256.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_depot_document_candidature</text>
+	<text x="2111" y="1274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_document_candidature</text>
+</g>
+
+<g class="node ent" data-n="BIEN" tabindex="0">
+	<g>
+		<rect x="2649" y="1104" width="164" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2649" y="1130" width="164" height="188" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2649" y="1104" width="164" height="214" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2649" y1="1130" x2="2813" y2="1130" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2714" y="1122.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">BIEN</text>
+	<text x="2654" y="1148.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_bien</text>
+	<line x1="2654" y1="1151" x2="2714" y2="1151" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2654" y="1166.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_bien</text>
+	<text x="2654" y="1184.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_bien</text>
+	<text x="2654" y="1202.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">description_bien</text>
+	<text x="2654" y="1220.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">adresse</text>
+	<text x="2654" y="1238.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ville</text>
+	<text x="2654" y="1256.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">surface</text>
+	<text x="2654" y="1274.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">nombre_pieces</text>
+	<text x="2654" y="1292.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_bien</text>
+	<text x="2654" y="1310.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_bien</text>
+</g>
+
+<g class="node ent" data-n="MOUVEMENT_DEPOT" tabindex="0">
+	<g>
+		<rect x="22" y="1288" width="230" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="22" y="1314" width="230" height="170" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="22" y="1288" width="230" height="196" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="22" y1="1314" x2="252" y2="1314" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="74" y="1306.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MOUVEMENT_DEPOT</text>
+	<text x="27" y="1332.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_mouvement</text>
+	<line x1="27" y1="1335" x2="129" y2="1335" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="27" y="1350.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_mouvement</text>
+	<text x="27" y="1368.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">montant</text>
+	<text x="27" y="1386.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_mouvement</text>
+	<text x="27" y="1404.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">reference_operation</text>
+	<text x="27" y="1422.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_mouvement_depot</text>
+	<text x="27" y="1440.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_justificatif</text>
+	<text x="27" y="1458.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_mouvement</text>
+	<text x="27" y="1476.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">motif_annulation_mouvement</text>
+</g>
+
+<g class="node ent" data-n="DEMANDE_LOCATION" tabindex="0">
+	<g>
+		<rect x="1925" y="1315" width="264" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1925" y="1341" width="264" height="116" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1925" y="1315" width="264" height="142" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1925" y1="1341" x2="2189" y2="1341" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1989" y="1333.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">DEMANDE_LOCATION</text>
+	<text x="1930" y="1359.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_demande</text>
+	<line x1="1930" y1="1362" x2="2015" y2="1362" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1930" y="1377.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_depot_demande</text>
+	<text x="1930" y="1395.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_demande</text>
+	<text x="1930" y="1413.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">message_candidat</text>
+	<text x="1930" y="1431.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_decision_demande_location</text>
+	<text x="1930" y="1449.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">commentaire_decision</text>
+</g>
+
+<g class="node ent" data-n="MOYEN_ENCAISSEMENT" tabindex="0">
+	<g>
+		<rect x="483" y="1499" width="164" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="483" y="1525" width="164" height="44" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="483" y="1499" width="164" height="70" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="483" y1="1525" x2="647" y2="1525" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="489" y="1517.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MOYEN_ENCAISSEMENT</text>
+	<text x="488" y="1543.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_moyen</text>
+	<line x1="488" y1="1546" x2="556" y2="1546" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="488" y="1561.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">est_actif</text>
+</g>
+
+<g class="node ent" data-n="NOTIFICATION" tabindex="0">
+	<g>
+		<rect x="1370" y="1454" width="230" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1370" y="1480" width="230" height="134" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1370" y="1454" width="230" height="160" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1370" y1="1480" x2="1600" y2="1480" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1434" y="1472.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">NOTIFICATION</text>
+	<text x="1375" y="1498.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_notification</text>
+	<line x1="1375" y1="1501" x2="1502" y2="1501" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1375" y="1516.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">categorie_notification</text>
+	<text x="1375" y="1534.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_creation_notification</text>
+	<text x="1375" y="1552.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_lecture_notification</text>
+	<text x="1375" y="1570.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">canal_notification</text>
+	<text x="1375" y="1588.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">contenu_notification</text>
+	<text x="1375" y="1606.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_notification</text>
+</g>
+
+<g class="node ent" data-n="ANNONCE" tabindex="0">
+	<g>
+		<rect x="2413" y="1445" width="172" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2413" y="1471" width="172" height="152" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2413" y="1445" width="172" height="178" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2413" y1="1471" x2="2585" y2="1471" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2469" y="1463.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ANNONCE</text>
+	<text x="2418" y="1489.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_annonce</text>
+	<line x1="2418" y1="1492" x2="2503" y2="1492" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2418" y="1507.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">titre</text>
+	<text x="2418" y="1525.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">description_annonce</text>
+	<text x="2418" y="1543.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">loyer_demande</text>
+	<text x="2418" y="1561.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">charges_annonce</text>
+	<text x="2418" y="1579.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_disponibilite</text>
+	<text x="2418" y="1597.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_publication</text>
+	<text x="2418" y="1615.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_annonce</text>
+</g>
+
+<g class="node ent" data-n="PHOTO_BIEN" tabindex="0">
+	<g>
+		<rect x="2620" y="1481" width="222" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2620" y="1507" width="222" height="80" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="2620" y="1481" width="222" height="106" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="2620" y1="1507" x2="2842" y2="1507" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="2689" y="1499.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">PHOTO_BIEN</text>
+	<text x="2625" y="1525.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_photo</text>
+	<line x1="2625" y1="1528" x2="2693" y2="1528" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="2625" y="1543.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_fichier_photo_bien</text>
+	<text x="2625" y="1561.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">description_photo_bien</text>
+	<text x="2625" y="1579.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_ajout</text>
+</g>
+
+<g class="node ent" data-n="ROLE" tabindex="0">
+	<g>
+		<rect x="81" y="1629" width="112" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="81" y="1655" width="112" height="44" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="81" y="1629" width="112" height="70" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="81" y1="1655" x2="193" y2="1655" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="120" y="1647.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">ROLE</text>
+	<text x="86" y="1673.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_role</text>
+	<line x1="86" y1="1676" x2="146" y2="1676" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="86" y="1691.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">libelle_role</text>
+</g>
+
+<g class="node ent" data-n="MOYEN_MOBILE" tabindex="0">
+	<g>
+		<rect x="273" y="1629" width="146" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="273" y="1655" width="146" height="44" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="273" y="1629" width="146" height="70" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="273" y1="1655" x2="419" y2="1655" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="295" y="1647.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MOYEN_MOBILE</text>
+	<text x="278" y="1673.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">operateur</text>
+	<text x="278" y="1691.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">numero_reception</text>
+</g>
+
+<g class="node ent" data-n="MOYEN_BANCAIRE" tabindex="0">
+	<g>
+		<rect x="674" y="1620" width="146" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="674" y="1646" width="146" height="62" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="674" y="1620" width="146" height="88" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="674" y1="1646" x2="820" y2="1646" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="688" y="1638.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">MOYEN_BANCAIRE</text>
+	<text x="679" y="1664.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">banque</text>
+	<text x="679" y="1682.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">rib</text>
+	<text x="679" y="1700.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">titulaire_compte</text>
+</g>
+
+<g class="node ent" data-n="JUSTIFICATIF_PAIEMENT" tabindex="0">
+	<g>
+		<rect x="853" y="1611" width="314" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="853" y="1637" width="314" height="80" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="853" y="1611" width="314" height="106" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="853" y1="1637" x2="1167" y2="1637" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="921" y="1629.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">JUSTIFICATIF_PAIEMENT</text>
+	<text x="858" y="1655.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_justificatif</text>
+	<line x1="858" y1="1658" x2="985" y2="1658" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="858" y="1673.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">chemin_fichier_justificatif_paiement</text>
+	<text x="858" y="1691.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_depot_justificatif_paiement</text>
+	<text x="858" y="1709.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">type_justificatif</text>
+</g>
+
+<g class="node ent" data-n="VISITE" tabindex="0">
+	<g>
+		<rect x="1757" y="1593" width="188" height="26" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1757" y="1619" width="188" height="116" stroke="none" stroke-width="0" opacity="1" style="fill:var(--paper)"/>
+		<rect x="1757" y="1593" width="188" height="142" fill="none" stroke-width="1.5" opacity="1" style="stroke:var(--ink)"/>
+		<line x1="1757" y1="1619" x2="1945" y2="1619" stroke-width="1" style="stroke:var(--ink)"/>
+	</g>
+	<text x="1825" y="1611.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">VISITE</text>
+	<text x="1762" y="1637.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">id_visite</text>
+	<line x1="1762" y1="1640" x2="1839" y2="1640" stroke-width="1" style="stroke:var(--ink)"/>
+	<text x="1762" y="1655.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_demande_visite</text>
+	<text x="1762" y="1673.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_visite_souhaitee</text>
+	<text x="1762" y="1691.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">date_visite_prevue</text>
+	<text x="1762" y="1709.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">statut_visite</text>
+	<text x="1762" y="1727.6" font-family="Courier New, Courier, monospace" font-size="14" style="fill:var(--ink)">commentaire_visite</text>
+</g>
+
+</svg></div>
+      <aside class="panel" id="panel" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section id="p-ents" role="tabpanel" aria-labelledby="t-ents" hidden>
+    <p class="note">Chaque entité avec ses attributs (le premier, souligné, est l'identifiant ; en pointillé, l'identifiant relatif d'une entité faible) et les associations auxquelles elle participe.</p>
+    <div class="cards" id="ecards"></div>
+  </section>
+
+  <section id="p-assoc" role="tabpanel" aria-labelledby="t-assoc" hidden>
+    <p class="note">Chaque association avec les cardinalités de ses deux entités. La cardinalité écrite à côté d'une entité dit à combien d'occurrences de l'autre entité une occurrence de celle-ci est liée. Le signe « identifiant relatif » marque la patte qui rend l'entité faible.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Association</th><th>Entité A</th><th>Entité B</th><th>Lecture</th><th>Attributs portés</th></tr></thead>
+      <tbody id="atable"></tbody>
+    </table></div>
+    <h2 style="font-size:1rem;margin:22px 0 8px">Spécialisations</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Entité générale</th><th>Type</th><th>Entités spécialisées</th></tr></thead>
+      <tbody id="itable"></tbody>
+    </table></div>
+  </section>
+
+  <section id="p-rules" role="tabpanel" aria-labelledby="t-rules" hidden>
+    <p class="note">Notes d'en-tête du fichier Mocodo : écarts corrigés, données figées, contraintes d'intégrité que les cardinalités ne peuvent pas exprimer, règles métier.</p>
+    <div class="rulesbox"><div class="callout"><p>BAIL MANAGER — MCD v5.1 MERISE — SOURCE A TESTER (révision de la source de contrôle v4.14)</p><p>v5.1 : modification textuelle verifiee statiquement. Compilation Mocodo v5.1 non executee ; non verifie : dbdiagram.io, MariaDB.</p></div>
+<h3>ECARTS AU STRICT CORRIGES (v4.14 -&gt; v5.0)</h3>
+<ul class="rules">
+<li><span class="code">E1</span><span>ACCEPTATION_CONTRAT (entité sans identifiant propre, dont le 1er attribut entrait dans la clé) est remplacée par l&#x27;association N,N ACCEPTER (DOCUMENT_CONTRAT x UTILISATEUR).</span></li>
+<li><span class="code">E2</span><span>Fausses clés étrangères supprimées : NOTIFICATION.reference_contexte_notification, HISTORIQUE_OPERATION.type_objet/reference_objet -&gt; associations 0,1 explicites.</span></li>
+<li><span class="code">E3</span><span>(v5.1) Association PRODUIRE retablie pour tracer explicitement quelle prolongation a produit un contrat successeur (0,1 de part et d autre).</span></li>
+<li><span class="code">E4</span><span>DOCUMENT_FINANCIER : généralisation exclusive totale RECU / QUITTANCE (remplace le XOR en commentaire et l&#x27;attribut type_document_financier).</span></li>
+<li><span class="code">E5</span><span>MOYEN_ENCAISSEMENT : spécialisation exclusive MOYEN_MOBILE / MOYEN_BANCAIRE (remplace type_moyen et les attributs facultatifs selon le type).</span></li>
+<li><span class="code">E6</span><span>CONTRAT : spécialisation CONTRAT_REPRIS (date_reprise, solde_reprise).</span></li>
+</ul>
+<h3>DONNEES FIGEES CONSERVEES (instantanés datés, pas des dérivés recalculables) :</h3>
+<p>SOLDE_FIN_CONTRAT.total_* / montant_* (D-14) ; ECHEANCE.montant_loyer / montant_charges_echeance (CTR-10, ARB-03).</p>
+<h3>CONTRAINTES D&#x27;INTEGRITE NON EXPRIMABLES PAR LES CARDINALITES (a porter au MLD/applicatif)</h3>
+<h4>Exclusions entre associations 0,1 d&#x27;une même entité</h4>
+<ul class="rules">
+<li><span class="code">CI-X1</span><span>NOTIFICATION : au plus un contexte parmi INFORMER, PREVENIR, AVISER, CONVOQUER.</span></li>
+<li><span class="code">CI-X2</span><span>HISTORIQUE_OPERATION : au plus un objet parmi AUDITER, CONSIGNER, JOURNALISER.</span></li>
+</ul>
+<h4>Egalités de chemin (cycles du schéma)</h4>
+<ul class="rules">
+<li><span class="code">CI-C1</span><span>CONTRAT.bien = bien de l&#x27;ANNONCE de la DEMANDE_LOCATION d&#x27;ABOUTIR (LOUER / ABOUTIR / RECEVOIR / ANNONCER).</span></li>
+<li><span class="code">CI-C2</span><span>PAIEMENT.contrat = contrat des ECHEANCE affectées (RATTACHER / AFFECTER / GENERER) ; PAI-02.</span></li>
+<li><span class="code">CI-C3</span><span>RAPPEL.contrat = contrat de l&#x27;ECHEANCE alertée (MOTIVER / ALERTER / GENERER).</span></li>
+<li><span class="code">CI-C4</span><span>QUITTANCE : echeance d&#x27;un contrat dont le propriétaire est celui du bien ; RECU : paiement idem.</span></li>
+<li><span class="code">CI-C5</span><span>ACCEPTER : l&#x27;utilisateur répondant est PARTICIPANT du contrat du DOCUMENT_CONTRAT ; version = version courante.</span></li>
+<li><span class="code">CI-C6</span><span>EMPLOYER : moyen possédé par le propriétaire du bien (CONFIGURER / GERER), compatible avec mode_paiement ; ESPECES sans moyen.</span></li>
+<li><span class="code">CI-C7</span><span>DOCUMENT_CONTRAT / AVENANT (FORMALISER) : même contrat (DOC-02).</span></li>
+<li><span class="code">CI-C8</span><span>PRODUIRE : si une prolongation produit un contrat successeur, cette prolongation est ACCEPTEE, le successeur PRECEDE le contrat source, les deux contrats portent sur le meme BIEN, motif_creation = PROLONGATION et date_debut = date_application. Les demandes acceptees sans successeur active restent possibles.</span></li>
+</ul>
+<h4>Règles métier (valeurs, états, calculs)</h4>
+<ul class="rules">
+<li><span class="code">CTR-01</span><span>brouillon : 0 participant ; avant EN_ATTENTE_ACCEPTATIONS : &gt;=1 participant, 100 pct, un seul payeur principal.</span></li>
+<li><span class="code">CTR-03/07/11</span><span>intervalles demi-ouverts sans chevauchement ; PRECEDER sans cycle, même BIEN ; bascule ACTIF-&gt;REMPLACE atomique ; un seul successeur.</span></li>
+<li><span class="code">CTR-10/ECH-03/ECH-05/ECH-06/D-22</span><span>échéances jamais supprimées, sans statut stocké ; engagée = immuable ; prorata du LOYER : jours calendaires réels, arrondi à l&#x27;ariary (0,5 vers le haut), décimal ; charges non proratisées sans validation explicite.</span></li>
+<li><span class="code">CTR-12</span><span>date_fin_effective = date événementielle (borne exclusive), distincte de date_fin_prevue.</span></li>
+<li><span class="code">DOC-02/AVE-03</span><span>version principale = max(numero_version) sans avenant ; version d&#x27;avenant = max par avenant.</span></li>
+<li><span class="code">EDL-01/02</span><span>état des lieux courant = le plus récent par type et contrat.</span></li>
+<li><span class="code">DEP-04</span><span>contrepassation d&#x27;un mouvement CONFIRME : même type, sens inverse, cumul &lt;= montant initial, sans cycle (CORRIGER).</span></li>
+<li><span class="code">PAI-09</span><span>un paiement contesté avant validation ne compte pas ; un encaissement VALIDE reste inchangé sans correction explicite.</span></li>
+<li><span class="code">FIN-03</span><span>SOLDE_FIN_CONTRAT : instantané à date_calcul, sans mutation après FIGE.</span></li>
+<li><span class="code">ARB-01</span><span>deux avenants APPROUVE/APPLIQUE d&#x27;un même contrat ne modifient pas le même champ à la même date.</span></li>
+<li><span class="code">ARB-10</span><span>un seul bien : une seule ANNONCE PUBLIEE ; pas d&#x27;ACTIF vers ANNULE ; pas deux occupations ACTIF concurrentes.</span></li>
+<li><span class="code">ANN-02</span><span>annonce bloquée si successeur en attente. RES-01 aucune résiliation ni expulsion automatique.</span></li>
+</ul></div>
+  </section>
+
+  <section id="p-src" role="tabpanel" aria-labelledby="t-src" hidden>
+    <p class="note">Code source Mocodo avec la disposition utilisée pour ce schéma. Il peut être collé dans Mocodo en ligne (mocodo.net) pour retrouver et modifier le schéma.</p>
+    <div class="bar"><button class="btn" id="copy">Copier le code</button><span class="hint" id="copied" aria-live="polite"></span></div>
+    <pre class="src" id="srcbox">% ============================================================================
+% BAIL MANAGER — MCD v5.1 MERISE — SOURCE A TESTER (révision de la source de contrôle v4.14)
+% v5.1 : modification textuelle verifiee statiquement. Compilation Mocodo v5.1 non executee ; non verifie : dbdiagram.io, MariaDB.
+%
+% ECARTS AU STRICT CORRIGES (v4.14 -> v5.0)
+% E1  ACCEPTATION_CONTRAT (entité sans identifiant propre, dont le 1er attribut entrait
+%     dans la clé) est remplacée par l'association N,N ACCEPTER (DOCUMENT_CONTRAT x UTILISATEUR).
+% E2  Fausses clés étrangères supprimées : NOTIFICATION.reference_contexte_notification,
+%     HISTORIQUE_OPERATION.type_objet/reference_objet -> associations 0,1 explicites.
+% E3 (v5.1) Association PRODUIRE retablie pour tracer explicitement quelle prolongation a produit un contrat successeur (0,1 de part et d autre).
+% E4  DOCUMENT_FINANCIER : généralisation exclusive totale RECU / QUITTANCE
+%     (remplace le XOR en commentaire et l'attribut type_document_financier).
+% E5  MOYEN_ENCAISSEMENT : spécialisation exclusive MOYEN_MOBILE / MOYEN_BANCAIRE
+%     (remplace type_moyen et les attributs facultatifs selon le type).
+% E6  CONTRAT : spécialisation CONTRAT_REPRIS (date_reprise, solde_reprise).
+%
+% DONNEES FIGEES CONSERVEES (instantanés datés, pas des dérivés recalculables) :
+%   SOLDE_FIN_CONTRAT.total_* / montant_* (D-14) ; ECHEANCE.montant_loyer / montant_charges_echeance (CTR-10, ARB-03).
+%
+% CONTRAINTES D'INTEGRITE NON EXPRIMABLES PAR LES CARDINALITES (a porter au MLD/applicatif)
+% -- Exclusions entre associations 0,1 d'une même entité
+% CI-X1 NOTIFICATION : au plus un contexte parmi INFORMER, PREVENIR, AVISER, CONVOQUER.
+% CI-X2 HISTORIQUE_OPERATION : au plus un objet parmi AUDITER, CONSIGNER, JOURNALISER.
+% -- Egalités de chemin (cycles du schéma)
+% CI-C1 CONTRAT.bien = bien de l'ANNONCE de la DEMANDE_LOCATION d'ABOUTIR (LOUER / ABOUTIR / RECEVOIR / ANNONCER).
+% CI-C2 PAIEMENT.contrat = contrat des ECHEANCE affectées (RATTACHER / AFFECTER / GENERER) ; PAI-02.
+% CI-C3 RAPPEL.contrat = contrat de l'ECHEANCE alertée (MOTIVER / ALERTER / GENERER).
+% CI-C4 QUITTANCE : echeance d'un contrat dont le propriétaire est celui du bien ; RECU : paiement idem.
+% CI-C5 ACCEPTER : l'utilisateur répondant est PARTICIPANT du contrat du DOCUMENT_CONTRAT ; version = version courante.
+% CI-C6 EMPLOYER : moyen possédé par le propriétaire du bien (CONFIGURER / GERER), compatible avec mode_paiement ; ESPECES sans moyen.
+% CI-C7 DOCUMENT_CONTRAT / AVENANT (FORMALISER) : même contrat (DOC-02).
+% CI-C8 PRODUIRE : si une prolongation produit un contrat successeur, cette prolongation est ACCEPTEE, le successeur PRECEDE le contrat source, les deux contrats portent sur le meme BIEN, motif_creation = PROLONGATION et date_debut = date_application. Les demandes acceptees sans successeur active restent possibles.
+% -- Règles métier (valeurs, états, calculs)
+% CTR-01 brouillon : 0 participant ; avant EN_ATTENTE_ACCEPTATIONS : >=1 participant, 100 pct, un seul payeur principal.
+% CTR-03/07/11 intervalles demi-ouverts sans chevauchement ; PRECEDER sans cycle, même BIEN ; bascule ACTIF->REMPLACE atomique ; un seul successeur.
+% CTR-10/ECH-03/ECH-05/ECH-06/D-22 échéances jamais supprimées, sans statut stocké ; engagée = immuable ; prorata du LOYER : jours calendaires réels, arrondi à l'ariary (0,5 vers le haut), décimal ; charges non proratisées sans validation explicite.
+% CTR-12 date_fin_effective = date événementielle (borne exclusive), distincte de date_fin_prevue.
+% DOC-02/AVE-03 version principale = max(numero_version) sans avenant ; version d'avenant = max par avenant.
+% EDL-01/02 état des lieux courant = le plus récent par type et contrat.
+% DEP-04 contrepassation d'un mouvement CONFIRME : même type, sens inverse, cumul &lt;= montant initial, sans cycle (CORRIGER).
+% PAI-09 un paiement contesté avant validation ne compte pas ; un encaissement VALIDE reste inchangé sans correction explicite.
+% FIN-03 SOLDE_FIN_CONTRAT : instantané à date_calcul, sans mutation après FIGE.
+% ARB-01 deux avenants APPROUVE/APPLIQUE d'un même contrat ne modifient pas le même champ à la même date.
+% ARB-10 un seul bien : une seule ANNONCE PUBLIEE ; pas d'ACTIF vers ANNULE ; pas deux occupations ACTIF concurrentes.
+% ANN-02 annonce bloquée si successeur en attente. RES-01 aucune résiliation ni expulsion automatique.
+% ============================================================================
+
+:
+RESILIER, 0N CONTRAT, 11 RESILIATION
+:
+:
+PROLONGER, 0N CONTRAT, 11 PROLONGATION
+ETAT_DES_LIEUX: id_etat_lieux, type_etat_lieux, date_etat_lieux, observations, remarques_locataire, date_contestation, chemin_document
+RAPPEL: id_rappel, type_rappel, date_creation_rappel, date_prevue, date_envoi_rappel, statut_rappel, canal, message, est_lue
+ALERTER, 0N ECHEANCE, 01 RAPPEL
+ECHEANCE: periode, date_echeance, montant_loyer, montant_charges_echeance
+QUITTANCER, 0N ECHEANCE, 11 QUITTANCE
+QUITTANCE:
+:
+MODIFIER, 0N CONTRAT, 11 AVENANT
+
+:
+DECIDER, 0N UTILISATEUR, 01 PROLONGATION
+PROLONGATION: id_prolongation, date_application_prolongation, date_demande_prolongation, date_fin_souhaitee, nouvelle_date_fin, nouveau_loyer_prolongation, nouvelles_charges_prolongation, nouveau_jour_echeance_prolongation, nouvelle_duree_preavis, date_decision_prolongation, motif_refus_prolongation, statut_prolongation
+:
+PRODUIRE, 01 PROLONGATION, 01 CONTRAT
+CONSTATER, 0N CONTRAT, 11 ETAT_DES_LIEUX
+MOTIVER, 0N CONTRAT, 11 RAPPEL
+GENERER, 0N CONTRAT, _11 ECHEANCE
+:
+:
+/\ CONTRAT &lt;- CONTRAT_REPRIS
+/XT\ DOCUMENT_FINANCIER &lt;- RECU, QUITTANCE
+AVENANT: id_avenant, type_avenant, motif_avenant, date_creation_avenant, date_effet, statut_avenant, nouveau_loyer_avenant, nouvelles_charges_avenant, nouveau_jour_echeance_avenant, date_validation_avenant
+
+RESILIATION: id_resiliation, motif_resiliation, fondement_contractuel, date_demande_resiliation, date_notification_resiliation, date_limite_regularisation, date_effet_confirmee, date_decision_resiliation, statut_resiliation, reference_justificatif, commentaire_resiliation
+INITIER, 0N UTILISATEUR, 11 PROLONGATION
+UTILISER, 0N UTILISATEUR, 01 INVITATION
+INVITATION: id_invitation, email_invite, jeton_hash, date_envoi_invitation, date_expiration, date_utilisation, date_annulation
+CONCERNER, 0N CONTRAT, 11 INVITATION
+CONTRAT: id_contrat, reference_contrat, motif_creation, date_creation_contrat, date_activation, date_debut, date_fin_prevue, loyer_mensuel, montant_charges_contrat, jour_echeance, duree_preavis, statut_contrat, date_fin_effective, date_liberation_effective
+:
+PRECEDER, 01 [ancien] CONTRAT, 01 [nouveau] CONTRAT
+AFFECTER, 0N PAIEMENT, 0N ECHEANCE: montant_affecte
+CONTRAT_REPRIS: date_reprise, solde_reprise
+RECU:
+DOCUMENT_FINANCIER: id_document_financier, reference_document, date_generation_document_financier, chemin_fichier_document_financier, statut_document_financier
+FORMALISER, 0N AVENANT, 01 DOCUMENT_CONTRAT
+
+:
+DECLENCHER, 0N UTILISATEUR, 11 RESILIATION
+:
+:
+CLOTURER, 01 CONTRAT, 11 SOLDE_FIN_CONTRAT
+AUDITER, 0N CONTRAT, 01 HISTORIQUE_OPERATION
+RATTACHER, 0N CONTRAT, 11 PAIEMENT
+:
+:
+:
+MATERIALISER, 0N CONTRAT, _11 DOCUMENT_CONTRAT
+DOCUMENT_CONTRAT: numero_version, type_document_contrat, date_generation_document_contrat, chemin_fichier_document_contrat
+:
+
+GARANTIR, 01 CONTRAT, 11 DEPOT_GARANTIE
+NOTIFIER, 0N CONTRAT, 11 PREAVIS
+:
+PARTICIPER, 0N UTILISATEUR, 0N CONTRAT: date_entree, date_sortie, pourcentage_contribution, est_payeur_principal
+AVERTIR, 0N UTILISATEUR, 11 RAPPEL
+SOLDE_FIN_CONTRAT: id_solde, date_calcul, total_sommes_dues, total_paiements_valides, montant_restitution_depot, montant_restant, statut_solde
+HISTORIQUE_OPERATION: id_historique, type_operation, date_operation, description_historique_operation, origine_operation
+:
+ATTESTER, 0N PAIEMENT, 11 RECU
+INFORMER, 0N CONTRAT, 01 NOTIFICATION
+ABOUTIR, 01 DEMANDE_LOCATION, 01 CONTRAT
+ACCEPTER, 0N DOCUMENT_CONTRAT, 0N UTILISATEUR: mode_acceptation, statut_acceptation, date_reponse, motif_refus_acceptation_contrat
+LOUER, 0N BIEN, 11 CONTRAT
+
+DEPOT_GARANTIE: id_depot, montant_prevu
+PREAVIS: id_preavis, date_notification_preavis, date_depart_proposee, date_depart_confirmee, motif_preavis, statut_preavis
+INVITER, 0N UTILISATEUR, 11 INVITATION
+:
+EFFECTUER, 0N UTILISATEUR, 01 HISTORIQUE_OPERATION
+CONSIGNER, 0N PAIEMENT, 01 HISTORIQUE_OPERATION
+:
+PAIEMENT: id_paiement, date_declaration, date_paiement, montant_declare, montant_valide, mode_paiement, reference_transaction, mode_saisie, statut_paiement, date_validation_paiement, commentaire_validation
+:
+:
+:
+GERER, 0N UTILISATEUR, 11 BIEN
+:
+
+TRACER, 0N DEPOT_GARANTIE, 11 MOUVEMENT_DEPOT
+EMETTRE, 0N UTILISATEUR, 11 PREAVIS
+:
+UTILISATEUR: id_utilisateur, nom, prenom, email, telephone, mot_de_passe_hash, date_creation_utilisateur, statut_compte, tentatives_echec, date_blocage, jeton_reinitialisation_hash, date_expiration_jeton
+:
+VALIDER, 0N UTILISATEUR, 01 PAIEMENT
+:
+:
+AVISER, 0N PAIEMENT, 01 NOTIFICATION
+:
+DOCUMENT_CANDIDATURE: id_document_candidature, nom_document, type_document_candidature, chemin_fichier_document_candidature, date_depot_document_candidature, statut_document_candidature
+JOURNALISER, 0N BIEN, 01 HISTORIQUE_OPERATION
+BIEN: id_bien, reference_bien, type_bien, description_bien, adresse, ville, surface, nombre_pieces, statut_bien, date_creation_bien
+
+MOUVEMENT_DEPOT: id_mouvement, type_mouvement, montant, date_mouvement, reference_operation, motif_mouvement_depot, chemin_justificatif, statut_mouvement, motif_annulation_mouvement
+SAISIR, 0N UTILISATEUR, 11 MOUVEMENT_DEPOT
+:
+CONFIGURER, 0N UTILISATEUR, 11 MOYEN_ENCAISSEMENT
+:
+:
+ENREGISTRER, 0N UTILISATEUR, 11 PAIEMENT
+:
+PREVENIR, 0N DEMANDE_LOCATION, 01 NOTIFICATION
+DEMANDE_LOCATION: id_demande, date_depot_demande, statut_demande, message_candidat, date_decision_demande_location, commentaire_decision
+JOINDRE, 0N DEMANDE_LOCATION, 11 DOCUMENT_CANDIDATURE
+ANNONCER, 0N BIEN, 11 ANNONCE
+ILLUSTRER, 0N BIEN, 11 PHOTO_BIEN
+
+CORRIGER, 0N [initial] MOUVEMENT_DEPOT, 01 [correctif] MOUVEMENT_DEPOT
+ASSUMER, 11 UTILISATEUR, 0N ROLE
+MOYEN_ENCAISSEMENT: id_moyen, est_actif
+EMPLOYER, 0N MOYEN_ENCAISSEMENT, 01 PAIEMENT
+JUSTIFIER, 0N PAIEMENT, 11 JUSTIFICATIF_PAIEMENT
+DISTRIBUER, 0N UTILISATEUR, 11 NOTIFICATION
+NOTIFICATION: id_notification, categorie_notification, date_creation_notification, date_lecture_notification, canal_notification, contenu_notification, statut_notification
+DEMANDER, 0N UTILISATEUR, 11 VISITE
+:
+DEPOSER, 0N UTILISATEUR, 11 DEMANDE_LOCATION
+RECEVOIR, 0N ANNONCE, 11 DEMANDE_LOCATION
+ANNONCE: id_annonce, titre, description_annonce, loyer_demande, charges_annonce, date_disponibilite, date_publication, statut_annonce
+PHOTO_BIEN: id_photo, chemin_fichier_photo_bien, description_photo_bien, date_ajout
+
+ROLE: id_role, libelle_role
+MOYEN_MOBILE: operateur, numero_reception
+/X\ MOYEN_ENCAISSEMENT &lt;- MOYEN_MOBILE, MOYEN_BANCAIRE
+MOYEN_BANCAIRE: banque, rib, titulaire_compte
+JUSTIFICATIF_PAIEMENT: id_justificatif, chemin_fichier_justificatif_paiement, date_depot_justificatif_paiement, type_justificatif
+:
+:
+CONVOQUER, 0N VISITE, 01 NOTIFICATION
+VISITE: id_visite, date_demande_visite, date_visite_souhaitee, date_visite_prevue, statut_visite, commentaire_visite
+:
+SOLLICITER, 0N ANNONCE, 11 VISITE
+:
+:</pre>
+  </section>
+</div>
+
+<script>
+const DATA = {"ents": {"ETAT_DES_LIEUX": ["id_etat_lieux", "type_etat_lieux", "date_etat_lieux", "observations", "remarques_locataire", "date_contestation", "chemin_document"], "RAPPEL": ["id_rappel", "type_rappel", "date_creation_rappel", "date_prevue", "date_envoi_rappel", "statut_rappel", "canal", "message", "est_lue"], "ECHEANCE": ["periode", "date_echeance", "montant_loyer", "montant_charges_echeance"], "QUITTANCE": [], "PROLONGATION": ["id_prolongation", "date_application_prolongation", "date_demande_prolongation", "date_fin_souhaitee", "nouvelle_date_fin", "nouveau_loyer_prolongation", "nouvelles_charges_prolongation", "nouveau_jour_echeance_prolongation", "nouvelle_duree_preavis", "date_decision_prolongation", "motif_refus_prolongation", "statut_prolongation"], "AVENANT": ["id_avenant", "type_avenant", "motif_avenant", "date_creation_avenant", "date_effet", "statut_avenant", "nouveau_loyer_avenant", "nouvelles_charges_avenant", "nouveau_jour_echeance_avenant", "date_validation_avenant"], "RESILIATION": ["id_resiliation", "motif_resiliation", "fondement_contractuel", "date_demande_resiliation", "date_notification_resiliation", "date_limite_regularisation", "date_effet_confirmee", "date_decision_resiliation", "statut_resiliation", "reference_justificatif", "commentaire_resiliation"], "INVITATION": ["id_invitation", "email_invite", "jeton_hash", "date_envoi_invitation", "date_expiration", "date_utilisation", "date_annulation"], "CONTRAT": ["id_contrat", "reference_contrat", "motif_creation", "date_creation_contrat", "date_activation", "date_debut", "date_fin_prevue", "loyer_mensuel", "montant_charges_contrat", "jour_echeance", "duree_preavis", "statut_contrat", "date_fin_effective", "date_liberation_effective"], "CONTRAT_REPRIS": ["date_reprise", "solde_reprise"], "RECU": [], "DOCUMENT_FINANCIER": ["id_document_financier", "reference_document", "date_generation_document_financier", "chemin_fichier_document_financier", "statut_document_financier"], "DOCUMENT_CONTRAT": ["numero_version", "type_document_contrat", "date_generation_document_contrat", "chemin_fichier_document_contrat"], "SOLDE_FIN_CONTRAT": ["id_solde", "date_calcul", "total_sommes_dues", "total_paiements_valides", "montant_restitution_depot", "montant_restant", "statut_solde"], "HISTORIQUE_OPERATION": ["id_historique", "type_operation", "date_operation", "description_historique_operation", "origine_operation"], "DEPOT_GARANTIE": ["id_depot", "montant_prevu"], "PREAVIS": ["id_preavis", "date_notification_preavis", "date_depart_proposee", "date_depart_confirmee", "motif_preavis", "statut_preavis"], "PAIEMENT": ["id_paiement", "date_declaration", "date_paiement", "montant_declare", "montant_valide", "mode_paiement", "reference_transaction", "mode_saisie", "statut_paiement", "date_validation_paiement", "commentaire_validation"], "UTILISATEUR": ["id_utilisateur", "nom", "prenom", "email", "telephone", "mot_de_passe_hash", "date_creation_utilisateur", "statut_compte", "tentatives_echec", "date_blocage", "jeton_reinitialisation_hash", "date_expiration_jeton"], "DOCUMENT_CANDIDATURE": ["id_document_candidature", "nom_document", "type_document_candidature", "chemin_fichier_document_candidature", "date_depot_document_candidature", "statut_document_candidature"], "BIEN": ["id_bien", "reference_bien", "type_bien", "description_bien", "adresse", "ville", "surface", "nombre_pieces", "statut_bien", "date_creation_bien"], "MOUVEMENT_DEPOT": ["id_mouvement", "type_mouvement", "montant", "date_mouvement", "reference_operation", "motif_mouvement_depot", "chemin_justificatif", "statut_mouvement", "motif_annulation_mouvement"], "DEMANDE_LOCATION": ["id_demande", "date_depot_demande", "statut_demande", "message_candidat", "date_decision_demande_location", "commentaire_decision"], "MOYEN_ENCAISSEMENT": ["id_moyen", "est_actif"], "NOTIFICATION": ["id_notification", "categorie_notification", "date_creation_notification", "date_lecture_notification", "canal_notification", "contenu_notification", "statut_notification"], "ANNONCE": ["id_annonce", "titre", "description_annonce", "loyer_demande", "charges_annonce", "date_disponibilite", "date_publication", "statut_annonce"], "PHOTO_BIEN": ["id_photo", "chemin_fichier_photo_bien", "description_photo_bien", "date_ajout"], "ROLE": ["id_role", "libelle_role"], "MOYEN_MOBILE": ["operateur", "numero_reception"], "MOYEN_BANCAIRE": ["banque", "rib", "titulaire_compte"], "JUSTIFICATIF_PAIEMENT": ["id_justificatif", "chemin_fichier_justificatif_paiement", "date_depot_justificatif_paiement", "type_justificatif"], "VISITE": ["id_visite", "date_demande_visite", "date_visite_souhaitee", "date_visite_prevue", "statut_visite", "commentaire_visite"]}, "assocs": {"RESILIER": {"legs": [["CONTRAT", "0,N", null, false], ["RESILIATION", "1,1", null, false]], "attrs": []}, "PROLONGER": {"legs": [["CONTRAT", "0,N", null, false], ["PROLONGATION", "1,1", null, false]], "attrs": []}, "ALERTER": {"legs": [["ECHEANCE", "0,N", null, false], ["RAPPEL", "0,1", null, false]], "attrs": []}, "QUITTANCER": {"legs": [["ECHEANCE", "0,N", null, false], ["QUITTANCE", "1,1", null, false]], "attrs": []}, "MODIFIER": {"legs": [["CONTRAT", "0,N", null, false], ["AVENANT", "1,1", null, false]], "attrs": []}, "DECIDER": {"legs": [["UTILISATEUR", "0,N", null, false], ["PROLONGATION", "0,1", null, false]], "attrs": []}, "PRODUIRE": {"legs": [["PROLONGATION", "0,1", null, false], ["CONTRAT", "0,1", null, false]], "attrs": []}, "CONSTATER": {"legs": [["CONTRAT", "0,N", null, false], ["ETAT_DES_LIEUX", "1,1", null, false]], "attrs": []}, "MOTIVER": {"legs": [["CONTRAT", "0,N", null, false], ["RAPPEL", "1,1", null, false]], "attrs": []}, "GENERER": {"legs": [["CONTRAT", "0,N", null, false], ["ECHEANCE", "1,1", null, true]], "attrs": []}, "INITIER": {"legs": [["UTILISATEUR", "0,N", null, false], ["PROLONGATION", "1,1", null, false]], "attrs": []}, "UTILISER": {"legs": [["UTILISATEUR", "0,N", null, false], ["INVITATION", "0,1", null, false]], "attrs": []}, "CONCERNER": {"legs": [["CONTRAT", "0,N", null, false], ["INVITATION", "1,1", null, false]], "attrs": []}, "PRECEDER": {"legs": [["CONTRAT", "0,1", "ancien", false], ["CONTRAT", "0,1", "nouveau", false]], "attrs": []}, "AFFECTER": {"legs": [["PAIEMENT", "0,N", null, false], ["ECHEANCE", "0,N", null, false]], "attrs": ["montant_affecte"]}, "FORMALISER": {"legs": [["AVENANT", "0,N", null, false], ["DOCUMENT_CONTRAT", "0,1", null, false]], "attrs": []}, "DECLENCHER": {"legs": [["UTILISATEUR", "0,N", null, false], ["RESILIATION", "1,1", null, false]], "attrs": []}, "CLOTURER": {"legs": [["CONTRAT", "0,1", null, false], ["SOLDE_FIN_CONTRAT", "1,1", null, false]], "attrs": []}, "AUDITER": {"legs": [["CONTRAT", "0,N", null, false], ["HISTORIQUE_OPERATION", "0,1", null, false]], "attrs": []}, "RATTACHER": {"legs": [["CONTRAT", "0,N", null, false], ["PAIEMENT", "1,1", null, false]], "attrs": []}, "MATERIALISER": {"legs": [["CONTRAT", "0,N", null, false], ["DOCUMENT_CONTRAT", "1,1", null, true]], "attrs": []}, "GARANTIR": {"legs": [["CONTRAT", "0,1", null, false], ["DEPOT_GARANTIE", "1,1", null, false]], "attrs": []}, "NOTIFIER": {"legs": [["CONTRAT", "0,N", null, false], ["PREAVIS", "1,1", null, false]], "attrs": []}, "PARTICIPER": {"legs": [["UTILISATEUR", "0,N", null, false], ["CONTRAT", "0,N", null, false]], "attrs": ["date_entree", "date_sortie", "pourcentage_contribution", "est_payeur_principal"]}, "AVERTIR": {"legs": [["UTILISATEUR", "0,N", null, false], ["RAPPEL", "1,1", null, false]], "attrs": []}, "ATTESTER": {"legs": [["PAIEMENT", "0,N", null, false], ["RECU", "1,1", null, false]], "attrs": []}, "INFORMER": {"legs": [["CONTRAT", "0,N", null, false], ["NOTIFICATION", "0,1", null, false]], "attrs": []}, "ABOUTIR": {"legs": [["DEMANDE_LOCATION", "0,1", null, false], ["CONTRAT", "0,1", null, false]], "attrs": []}, "ACCEPTER": {"legs": [["DOCUMENT_CONTRAT", "0,N", null, false], ["UTILISATEUR", "0,N", null, false]], "attrs": ["mode_acceptation", "statut_acceptation", "date_reponse", "motif_refus_acceptation_contrat"]}, "LOUER": {"legs": [["BIEN", "0,N", null, false], ["CONTRAT", "1,1", null, false]], "attrs": []}, "INVITER": {"legs": [["UTILISATEUR", "0,N", null, false], ["INVITATION", "1,1", null, false]], "attrs": []}, "EFFECTUER": {"legs": [["UTILISATEUR", "0,N", null, false], ["HISTORIQUE_OPERATION", "0,1", null, false]], "attrs": []}, "CONSIGNER": {"legs": [["PAIEMENT", "0,N", null, false], ["HISTORIQUE_OPERATION", "0,1", null, false]], "attrs": []}, "GERER": {"legs": [["UTILISATEUR", "0,N", null, false], ["BIEN", "1,1", null, false]], "attrs": []}, "TRACER": {"legs": [["DEPOT_GARANTIE", "0,N", null, false], ["MOUVEMENT_DEPOT", "1,1", null, false]], "attrs": []}, "EMETTRE": {"legs": [["UTILISATEUR", "0,N", null, false], ["PREAVIS", "1,1", null, false]], "attrs": []}, "VALIDER": {"legs": [["UTILISATEUR", "0,N", null, false], ["PAIEMENT", "0,1", null, false]], "attrs": []}, "AVISER": {"legs": [["PAIEMENT", "0,N", null, false], ["NOTIFICATION", "0,1", null, false]], "attrs": []}, "JOURNALISER": {"legs": [["BIEN", "0,N", null, false], ["HISTORIQUE_OPERATION", "0,1", null, false]], "attrs": []}, "SAISIR": {"legs": [["UTILISATEUR", "0,N", null, false], ["MOUVEMENT_DEPOT", "1,1", null, false]], "attrs": []}, "CONFIGURER": {"legs": [["UTILISATEUR", "0,N", null, false], ["MOYEN_ENCAISSEMENT", "1,1", null, false]], "attrs": []}, "ENREGISTRER": {"legs": [["UTILISATEUR", "0,N", null, false], ["PAIEMENT", "1,1", null, false]], "attrs": []}, "PREVENIR": {"legs": [["DEMANDE_LOCATION", "0,N", null, false], ["NOTIFICATION", "0,1", null, false]], "attrs": []}, "JOINDRE": {"legs": [["DEMANDE_LOCATION", "0,N", null, false], ["DOCUMENT_CANDIDATURE", "1,1", null, false]], "attrs": []}, "ANNONCER": {"legs": [["BIEN", "0,N", null, false], ["ANNONCE", "1,1", null, false]], "attrs": []}, "ILLUSTRER": {"legs": [["BIEN", "0,N", null, false], ["PHOTO_BIEN", "1,1", null, false]], "attrs": []}, "CORRIGER": {"legs": [["MOUVEMENT_DEPOT", "0,N", "initial", false], ["MOUVEMENT_DEPOT", "0,1", "correctif", false]], "attrs": []}, "ASSUMER": {"legs": [["UTILISATEUR", "1,1", null, false], ["ROLE", "0,N", null, false]], "attrs": []}, "EMPLOYER": {"legs": [["MOYEN_ENCAISSEMENT", "0,N", null, false], ["PAIEMENT", "0,1", null, false]], "attrs": []}, "JUSTIFIER": {"legs": [["PAIEMENT", "0,N", null, false], ["JUSTIFICATIF_PAIEMENT", "1,1", null, false]], "attrs": []}, "DISTRIBUER": {"legs": [["UTILISATEUR", "0,N", null, false], ["NOTIFICATION", "1,1", null, false]], "attrs": []}, "DEMANDER": {"legs": [["UTILISATEUR", "0,N", null, false], ["VISITE", "1,1", null, false]], "attrs": []}, "DEPOSER": {"legs": [["UTILISATEUR", "0,N", null, false], ["DEMANDE_LOCATION", "1,1", null, false]], "attrs": []}, "RECEVOIR": {"legs": [["ANNONCE", "0,N", null, false], ["DEMANDE_LOCATION", "1,1", null, false]], "attrs": []}, "CONVOQUER": {"legs": [["VISITE", "0,N", null, false], ["NOTIFICATION", "0,1", null, false]], "attrs": []}, "SOLLICITER": {"legs": [["ANNONCE", "0,N", null, false], ["VISITE", "1,1", null, false]], "attrs": []}}, "inh": {"CONTRAT_PARENT_#1": {"kind": "spécialisation", "parent": "CONTRAT", "children": ["CONTRAT_REPRIS"]}, "DOCUMENT_FINANCIER_PARENT_#2": {"kind": "spécialisation exclusive et totale", "parent": "DOCUMENT_FINANCIER", "children": ["RECU", "QUITTANCE"]}, "MOYEN_ENCAISSEMENT_PARENT_#3": {"kind": "spécialisation exclusive", "parent": "MOYEN_ENCAISSEMENT", "children": ["MOYEN_MOBILE", "MOYEN_BANCAIRE"]}}, "W": 2868, "H": 1744};
+(function () {
+  var ents = DATA.ents, assocs = DATA.assocs, inh = DATA.inh, W = DATA.W, H = DATA.H;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var svg = $("#mcd"), vp = $("#vp"), panel = $("#panel");
+  var nodes = {};
+  Array.prototype.forEach.call(svg.querySelectorAll(".node"), function (g) { nodes[g.getAttribute("data-n")] = g; });
+  function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (txt != null) { e.textContent = txt; } return e; }
+
+  /* ----- graphe : voisins de chaque élément ----- */
+  var adj = {};
+  function link(a, b) { (adj[a] = adj[a] || {})[b] = 1; (adj[b] = adj[b] || {})[a] = 1; }
+  Object.keys(assocs).forEach(function (a) { assocs[a].legs.forEach(function (l) { link(a, l[0]); }); });
+  Object.keys(inh).forEach(function (k) { link(k, inh[k].parent); inh[k].children.forEach(function (c) { link(k, c); }); });
+  var weak = {};
+  Object.keys(assocs).forEach(function (a) {
+    assocs[a].legs.forEach(function (l, i) { if (l[3]) { weak[l[0]] = { assoc: a, via: assocs[a].legs[1 - i][0] }; } });
+  });
+  var kindOf = function (n) { return ents[n] ? "ent" : (assocs[n] ? "assoc" : "inh"); };
+  function label(n) { return ents[n] || assocs[n] ? n : "Spécialisation de " + inh[n].parent; }
+
+  /* ----- lectures des cardinalités ----- */
+  var TXT = { "0,N": "0 à plusieurs", "0,1": "0 ou 1", "1,1": "exactement 1", "1,N": "1 à plusieurs" };
+  /* Convention Merise/Mocodo : la cardinalité écrite à côté d'une entité dit à combien d'occurrences de l'autre entité une occurrence de celle-ci est liée. */
+  function who(leg) { return leg[0] + (leg[2] ? " (" + leg[2] + ")" : ""); }
+  function sentence(from, to) { return "Chaque " + who(from) + " est lié à " + TXT[from[1]] + " " + who(to) + "."; }
+  function assocsOf(e) {
+    var r = [];
+    Object.keys(assocs).forEach(function (a) {
+      assocs[a].legs.forEach(function (l, i) { if (l[0] === e) { r.push({ a: a, leg: l, other: assocs[a].legs[1 - i] }); } });
+    });
+    return r;
+  }
+  function inhOf(e) {
+    return Object.keys(inh).filter(function (k) { return inh[k].parent === e || inh[k].children.indexOf(e) !== -1; });
+  }
+
+  /* ----- zoom ----- */
+  var scale = 1, MIN = 0.12, MAX = 2.4;
+  function applyScale() { svg.style.width = Math.round(W * scale) + "px"; svg.style.height = Math.round(H * scale) + "px"; }
+  function setScale(s, cx, cy) {
+    s = Math.max(MIN, Math.min(MAX, s));
+    var px = cx == null ? vp.clientWidth / 2 : cx, py = cy == null ? vp.clientHeight / 2 : cy;
+    var x = (vp.scrollLeft + px) / scale, y = (vp.scrollTop + py) / scale;
+    scale = s; applyScale();
+    vp.scrollLeft = x * scale - px; vp.scrollTop = y * scale - py;
+  }
+  function fit() { scale = Math.max(MIN, Math.min(1, (vp.clientWidth - 2) / W)); applyScale(); vp.scrollLeft = 0; vp.scrollTop = 0; }
+  $("#zin").onclick = function () { setScale(scale * 1.25); };
+  $("#zout").onclick = function () { setScale(scale / 1.25); };
+  $("#zfit").onclick = fit;
+  vp.addEventListener("wheel", function (e) {
+    if (!(e.ctrlKey || e.metaKey)) { return; }
+    e.preventDefault();
+    var r = vp.getBoundingClientRect();
+    setScale(scale * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  /* ----- glisser pour déplacer (souris) ----- */
+  var drag = null, moved = false;
+  vp.addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" || e.button !== 0) { return; }
+    drag = { x: e.clientX, y: e.clientY, sl: vp.scrollLeft, st: vp.scrollTop }; moved = false;
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!drag) { return; }
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!moved && Math.abs(dx) + Math.abs(dy) > 5) { moved = true; vp.classList.add("drag"); }
+    if (moved) { vp.scrollLeft = drag.sl - dx; vp.scrollTop = drag.st - dy; }
+  });
+  window.addEventListener("pointerup", function () { drag = null; vp.classList.remove("drag"); });
+
+  /* ----- panneau de lecture ----- */
+  function nameBtn(n) {
+    var b = h("button", "link", label(n)); b.type = "button";
+    b.onclick = function () { select(n, true); };
+    return b;
+  }
+  function showHome() {
+    panel.innerHTML = "";
+    var p = h("p", "empty");
+    p.innerHTML = "<strong>Aucun élément sélectionné.</strong><br>Cliquez sur une entité (rectangle), une association (forme arrondie) ou un triangle de spécialisation : ses liens restent visibles, le reste s'estompe, et ses cardinalités sont détaillées ici.";
+    panel.appendChild(p);
+  }
+  function showEntity(e) {
+    panel.innerHTML = "";
+    panel.appendChild(h("span", "kind", weak[e] ? "Entité faible" : "Entité"));
+    panel.appendChild(h("h2", null, e));
+    if (weak[e]) { panel.appendChild(h("p", "tagline", "Identifiée par " + weak[e].via + " via " + weak[e].assoc + " (identifiant relatif) : le premier attribut n'identifie qu'au sein d'une occurrence de " + weak[e].via + ".")); }
+    panel.appendChild(h("h3", null, "Attributs (" + ents[e].length + ")"));
+    if (ents[e].length) {
+      var ul = h("ul", "attrs");
+      ents[e].forEach(function (a, i) { ul.appendChild(h("li", i === 0 ? "id" : null, a)); });
+      panel.appendChild(ul);
+    } else {
+      panel.appendChild(h("p", "tagline", "Aucun attribut propre : l'entité hérite de celles de sa spécialisation."));
+    }
+    inhOf(e).forEach(function (k) {
+      var d = inh[k];
+      panel.appendChild(h("h3", null, "Spécialisation"));
+      var p = h("p", "tagline");
+      if (d.parent === e) { p.appendChild(document.createTextNode("Entité générale, " + d.kind + " en : " + d.children.join(", ") + ". ")); }
+      else { p.appendChild(document.createTextNode("Spécialise " + d.parent + " (" + d.kind + "). ")); }
+      p.appendChild(nameBtn(k)); panel.appendChild(p);
+    });
+    var list = assocsOf(e);
+    panel.appendChild(h("h3", null, "Associations (" + list.length + ")"));
+    var rl = h("ul", "rel-list");
+    list.forEach(function (x) {
+      var li = h("li");
+      li.appendChild(nameBtn(x.a)); li.appendChild(document.createTextNode(" "));
+      li.appendChild(h("span", "card", "(" + x.leg[1] + ")" + (x.leg[3] ? " identifiant relatif" : "")));
+      li.appendChild(h("span", "sentence", sentence(x.leg, x.other)));
+      rl.appendChild(li);
+    });
+    panel.appendChild(rl);
+  }
+  function showAssoc(a) {
+    panel.innerHTML = "";
+    panel.appendChild(h("span", "kind", "Association"));
+    panel.appendChild(h("h2", null, a));
+    panel.appendChild(h("h3", null, "Entités reliées"));
+    var rl = h("ul", "rel-list"), L = assocs[a].legs;
+    L.forEach(function (l, i) {
+      var li = h("li"); li.appendChild(nameBtn(l[0])); li.appendChild(document.createTextNode(" "));
+      li.appendChild(h("span", "card", "(" + l[1] + ")" + (l[2] ? " rôle " + l[2] : "") + (l[3] ? " identifiant relatif" : "")));
+      li.appendChild(h("span", "sentence", sentence(l, L[1 - i])));
+      rl.appendChild(li);
+    });
+    panel.appendChild(rl);
+    if (assocs[a].attrs.length) {
+      panel.appendChild(h("h3", null, "Attributs portés"));
+      var ul = h("ul", "attrs"); assocs[a].attrs.forEach(function (x) { ul.appendChild(h("li", null, x)); });
+      panel.appendChild(ul);
+    }
+  }
+  function showInh(k) {
+    var d = inh[k];
+    panel.innerHTML = "";
+    panel.appendChild(h("span", "kind", "Spécialisation"));
+    panel.appendChild(h("h2", null, d.parent));
+    panel.appendChild(h("p", "tagline", "Type : " + d.kind + ". Chaque occurrence de " + d.parent + " est au plus une des entités spécialisées" + (d.kind.indexOf("totale") !== -1 ? " et l'est obligatoirement" : "") + (d.kind.indexOf("exclusive") === -1 ? " (sans contrainte d'exclusivité déclarée)" : "") + "."));
+    panel.appendChild(h("h3", null, "Entité générale"));
+    var u1 = h("ul", "rel-list"), l1 = h("li"); l1.appendChild(nameBtn(d.parent)); u1.appendChild(l1); panel.appendChild(u1);
+    panel.appendChild(h("h3", null, "Entités spécialisées (" + d.children.length + ")"));
+    var u2 = h("ul", "rel-list");
+    d.children.forEach(function (c) { var li = h("li"); li.appendChild(nameBtn(c)); u2.appendChild(li); });
+    panel.appendChild(u2);
+  }
+
+  /* ----- sélection ----- */
+  function clearMarks() { Object.keys(nodes).forEach(function (n) { nodes[n].classList.remove("sel", "dim", "rel"); }); }
+  function select(n, scroll) {
+    if (!nodes[n]) { return; }
+    clearMarks();
+    var keep = {}; keep[n] = 1;
+    Object.keys(adj[n] || {}).forEach(function (x) {
+      keep[x] = 1;
+      if (ents[n]) { Object.keys(adj[x] || {}).forEach(function (y) { keep[y] = 1; }); }
+    });
+    var k = kindOf(n);
+    if (k === "ent") { showEntity(n); } else if (k === "assoc") { showAssoc(n); } else { showInh(n); }
+    Object.keys(nodes).forEach(function (x) { nodes[x].classList.add(keep[x] ? (x === n ? "sel" : "rel") : "dim"); });
+    if (scroll) { reveal(n); }
+  }
+  function reveal(n) {
+    var b = nodes[n].getBBox();
+    var cx = (b.x + b.width / 2) * scale, cy = (b.y + b.height / 2) * scale;
+    var narrow = window.innerWidth <= 900;
+    vp.scrollTo({ left: Math.max(0, cx - vp.clientWidth / 2), top: Math.max(0, cy - vp.clientHeight * (narrow ? 0.25 : 0.5)), behavior: "smooth" });
+  }
+  function reset() { clearMarks(); showHome(); $("#q").value = ""; }
+  $("#zreset").onclick = reset;
+  svg.addEventListener("click", function (e) {
+    if (moved) { moved = false; return; }
+    var g = e.target.closest ? e.target.closest(".node") : null;
+    if (g) { select(g.getAttribute("data-n")); } else { reset(); }
+  });
+  svg.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { var g = e.target.closest(".node"); if (g) { e.preventDefault(); select(g.getAttribute("data-n")); } }
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { reset(); } });
+
+  /* ----- recherche ----- */
+  var all = Object.keys(ents).concat(Object.keys(assocs)).sort();
+  var dl = $("#names");
+  all.forEach(function (n) { var o = document.createElement("option"); o.value = n; dl.appendChild(o); });
+  var q = $("#q");
+  function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[\s_-]+/g, ""); }
+  function rank(n, v) { var m = norm(n); return m === v ? 0 : (m.indexOf(v) === 0 ? 1 : 2); }
+  q.addEventListener("input", function () {
+    var v = norm(q.value);
+    if (!v) { reset(); return; }
+    var hits = all.filter(function (n) { return norm(n).indexOf(v) !== -1; });
+    var exact = all.filter(function (n) { return norm(n) === v; });
+    if (exact.length === 1) { select(exact[0], true); return; }
+    clearMarks();
+    Object.keys(nodes).forEach(function (k) { nodes[k].classList.add(hits.indexOf(k) !== -1 ? "rel" : "dim"); });
+  });
+  q.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") { return; }
+    var v = norm(q.value), hits = all.filter(function (n) { return norm(n).indexOf(v) !== -1; });
+    hits.sort(function (a, b) { return rank(a, v) - rank(b, v) || a.localeCompare(b); });
+    if (hits.length) { select(hits[0], true); }
+  });
+
+  /* ----- onglets ----- */
+  var panes = { schema: $("#p-schema"), ents: $("#p-ents"), assoc: $("#p-assoc"), rules: $("#p-rules"), src: $("#p-src") };
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
+    t.addEventListener("click", function () {
+      var k = t.getAttribute("data-tab");
+      Object.keys(panes).forEach(function (p) { panes[p].hidden = p !== k; });
+      Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (x) { x.setAttribute("aria-selected", x === t ? "true" : "false"); });
+    });
+  });
+
+  /* ----- vue Entités ----- */
+  var ec = $("#ecards");
+  Object.keys(ents).forEach(function (e) {
+    var c = h("article", "ecard");
+    c.appendChild(h("h2", null, e));
+    var sub = [];
+    if (weak[e]) { sub.push("Entité faible, identifiée par " + weak[e].via); }
+    inhOf(e).forEach(function (k) { var d = inh[k]; sub.push(d.parent === e ? "Générale : " + d.children.join(", ") : "Spécialise " + d.parent); });
+    if (sub.length) { c.appendChild(h("p", "sub", sub.join(" · "))); }
+    var ul = h("ul", "attrs");
+    ents[e].forEach(function (a, i) { ul.appendChild(h("li", i === 0 ? "id" : null, a)); });
+    c.appendChild(ul);
+    var chips = h("div", "chips");
+    assocsOf(e).forEach(function (x) { chips.appendChild(h("span", null, x.a + " (" + x.leg[1] + ")")); });
+    c.appendChild(chips);
+    ec.appendChild(c);
+  });
+
+  /* ----- vue Associations ----- */
+  var tb = $("#atable");
+  function td(txt, cls) { var d = document.createElement("td"); if (cls) { d.className = cls; } d.textContent = txt; return d; }
+  Object.keys(assocs).forEach(function (a) {
+    var L = assocs[a].legs, tr = document.createElement("tr");
+    function legTxt(l) { return who(l) + "  (" + l[1] + ")" + (l[3] ? " · identifiant relatif" : ""); }
+    tr.appendChild(td(a, "mono"));
+    tr.appendChild(td(legTxt(L[0]), "mono"));
+    tr.appendChild(td(legTxt(L[1]), "mono"));
+    var lec = document.createElement("td");
+    lec.appendChild(document.createTextNode(sentence(L[0], L[1])));
+    lec.appendChild(document.createElement("br"));
+    lec.appendChild(document.createTextNode(sentence(L[1], L[0])));
+    tr.appendChild(lec);
+    tr.appendChild(td(assocs[a].attrs.join(", "), "mono"));
+    tb.appendChild(tr);
+  });
+  var it = $("#itable");
+  Object.keys(inh).forEach(function (k) {
+    var d = inh[k], tr = document.createElement("tr");
+    tr.appendChild(td(d.parent, "mono")); tr.appendChild(td(d.kind)); tr.appendChild(td(d.children.join(", "), "mono"));
+    it.appendChild(tr);
+  });
+
+  /* ----- copie du code source ----- */
+  $("#copy").onclick = function () {
+    var txt = $("#srcbox").textContent, out = $("#copied");
+    function ok() { out.textContent = "Code copié."; }
+    function manual() {
+      var r = document.createRange(); r.selectNodeContents($("#srcbox"));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      out.textContent = "Code sélectionné : faites Ctrl + C.";
+    }
+    try { navigator.clipboard.writeText(txt).then(ok, manual); } catch (e) { manual(); }
+  };
+
+  showHome();
+  fit();
+})();
+</script>
+
+</body>
+</html>

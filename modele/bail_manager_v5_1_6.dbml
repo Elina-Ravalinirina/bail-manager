@@ -1,0 +1,479 @@
+
+Project Bail_Manager {
+  database_type: "MySQL"
+  Note: "MLD enrichi / MPD preliminaire v5.1. Echeances figees au calcul/validation ; solde de fin de contrat photographie datee FIGEE. Statuts echeance, invitation et depot derives. Identifiants relatifs : document_contrat, accepter, echeance. DOC-02 : numero_version est strictement unique pour tout id_contrat, avec ou sans avenant ; la version courante principale = MAX(numero_version) filtre sur id_avenant NULL ; la version courante d un avenant = MAX(numero_version) filtre sur cet id_avenant. Les deux maxima sont des vues filtrees sur une SEULE serie globale, pas des numerotations independantes."
+}
+
+Table role {
+  id_role bigint [pk]
+  libelle_role varchar(40) [not null, unique]
+}
+
+Table utilisateur {
+  id_utilisateur bigint [pk]
+  nom text
+  prenom text
+  email varchar(254) [not null, unique]
+  telephone text
+  mot_de_passe_hash text
+  date_creation datetime
+  statut_compte text
+  tentatives_echec integer
+  date_blocage datetime
+  jeton_reinitialisation_hash varchar(255) [unique]
+  date_expiration_jeton datetime
+  id_role bigint [not null]
+}
+
+Table invitation {
+  id_invitation bigint [pk]
+  email_invite text
+  jeton_hash varchar(255) [unique]
+  date_envoi datetime
+  date_expiration date
+  date_utilisation date
+  date_annulation date
+  id_utilisateur bigint [not null]
+  id_contrat bigint [not null]
+  id_utilisateur_invite bigint
+  Note: "Statut calcule : utilisee, annulee, expiree ou envoyee selon les dates."
+}
+
+Table bien {
+  id_bien bigint [pk]
+  reference_bien varchar(80) [unique]
+  type_bien text
+  description text
+  adresse text
+  ville text
+  surface decimal(10,2)
+  nombre_pieces integer
+  statut_bien text [note: "ACTIF, INDISPONIBLE, ARCHIVE. La situation (libre, occupe, bientot disponible) est calculee."]
+  date_creation datetime
+  id_utilisateur bigint [not null]
+}
+
+Table photo_bien {
+  id_photo bigint [pk]
+  chemin_fichier text
+  description text
+  date_ajout datetime
+  id_bien bigint [not null]
+}
+
+Table annonce {
+  id_annonce bigint [pk]
+  titre text
+  description text
+  loyer_demande bigint
+  charges_annonce bigint
+  date_disponibilite date
+  date_publication datetime
+  statut_annonce text
+  id_bien bigint [not null]
+  Note: "Une seule annonce publiee par bien. Publication bloquee si un contrat successeur est en attente."
+}
+
+Table visite {
+  id_visite bigint [pk]
+  date_demande datetime
+  date_visite_souhaitee date
+  date_visite_prevue date
+  statut_visite text
+  commentaire text
+  id_utilisateur bigint [not null]
+  id_annonce bigint [not null]
+}
+
+Table demande_location {
+  id_demande bigint [pk]
+  date_demande datetime
+  statut_demande text
+  message_candidat text
+  date_decision datetime
+  commentaire_decision text
+  id_utilisateur bigint [not null]
+  id_annonce bigint [not null]
+}
+
+Table document_candidature {
+  id_document_candidature bigint [pk]
+  nom_document text
+  type_document text
+  chemin_fichier text
+  date_depot datetime
+  statut_document text
+  id_demande bigint [not null]
+}
+
+Table contrat {
+  id_contrat bigint [pk]
+  reference_contrat varchar(80) [unique]
+  motif_creation text
+  date_creation datetime
+  date_activation datetime
+  date_debut date
+  date_fin_prevue date
+  loyer_mensuel bigint
+  montant_charges bigint
+  jour_echeance integer
+  duree_preavis integer
+  statut_contrat varchar(30) [not null, note: "BROUILLON, EN_ATTENTE_ACCEPTATIONS, ACTIF, REMPLACE, TERMINE, ANNULE"]
+  date_fin_effective date [note: "Date de fin contractuelle effective, borne exclusive en cas de succession ; jamais derivee automatiquement de date_fin_prevue."]
+  date_liberation_effective date
+  id_bien bigint [not null]
+  id_demande bigint [unique]
+  id_contrat_precedent bigint [unique, note: "Null si contrat initial. Un seul successeur par contrat."]
+  id_prolongation_origine bigint [unique, note: "Facultatif : demande de prolongation ayant produit ce successeur (PRODUIRE)."]
+  Note: "Lors d une succession, ancien contrat ACTIF vers REMPLACE et successeur vers ACTIF dans une transaction; aucun changement juridique automatique a la date de fin prevue."
+}
+
+Table contrat_repris {
+  id_contrat bigint [pk]
+  date_reprise date
+  solde_reprise bigint
+  Note: "Specialisation de CONTRAT (contrat enregistre alors qu il est deja en cours)."
+}
+
+Table participer {
+  id_utilisateur bigint [not null]
+  id_contrat bigint [not null]
+  date_entree date
+  date_sortie date
+  pourcentage_contribution decimal(5,2)
+  est_payeur_principal boolean
+  indexes { (id_utilisateur, id_contrat) [pk] }
+  Note: "Brouillon peut avoir zero participant. Avant envoi pour acceptation et activation: >=1, contributions 100 pct, un seul payeur principal."
+}
+
+Table document_contrat {
+  id_contrat bigint [not null]
+  numero_version integer [not null]
+  type_document_contrat text
+  date_generation datetime
+  chemin_fichier text
+  id_avenant bigint
+  indexes { (id_contrat, numero_version) [pk] }
+  Note: "Identifiant relatif MCD v5.1. DOC-02 : numero_version unique globalement par id_contrat, incluant documents principaux et avenants (1, 2, 3, ... sans doublon). La version principale courante = MAX(numero_version) des seuls documents sans avenant ; la version courante de chaque avenant = MAX(numero_version) des seuls documents lies a cet avenant. Il s agit de filtrages d une sequence globale et NON de sequences independantes. FK composite garantit document et avenant du meme contrat."
+}
+
+Table accepter {
+  id_contrat bigint [not null]
+  numero_version integer [not null]
+  id_utilisateur bigint [not null]
+  mode_acceptation text
+  statut_acceptation text
+  date_reponse datetime
+  motif_refus text
+  indexes { (id_contrat, numero_version, id_utilisateur) [pk] }
+  Note: "Association N,N DOCUMENT_CONTRAT x UTILISATEUR (ancienne entite acceptation_contrat). Numero_version global par contrat. Repondant (participant OU proprietaire du bien) controle par CI-C5 ; FK simple vers utilisateur. Version garantie par FK vers document_contrat."
+}
+
+Table prolongation {
+  id_prolongation bigint [pk]
+  date_demande datetime
+  date_fin_souhaitee date
+  nouvelle_date_fin date
+  nouveau_loyer bigint
+  nouvelles_charges bigint
+  nouveau_jour_echeance integer
+  nouvelle_duree_preavis integer
+  date_decision datetime
+  motif_refus text
+  date_application date
+  statut_prolongation text
+  id_utilisateur bigint [not null]
+  id_contrat bigint [not null]
+  id_utilisateur_decideur bigint
+  Note: "ARB-04 v5.1 : association PRODUIRE explicite via contrat.id_prolongation_origine (UNIQUE, NULL autorise). CI-C8 : prolongation acceptee, contrat source = pred du successeur, meme bien, date_debut = date_application. Demande acceptee ne ferme pas ancien contrat avant activation successeur."
+}
+
+Table avenant {
+  id_avenant bigint [pk]
+  type_avenant varchar(35) [not null, note: "LOYER, CHARGES, JOUR_ECHEANCE, MULTIPLE, AUTRE"]
+  motif text
+  date_creation datetime [not null]
+  date_effet date [not null]
+  statut_avenant varchar(25) [not null, note: "BROUILLON, EN_ATTENTE_ACCEPTATIONS, APPROUVE, REFUSE, ANNULE, APPLIQUE"]
+  nouveau_loyer bigint
+  nouvelles_charges bigint
+  nouveau_jour_echeance integer
+  date_validation datetime
+  id_contrat bigint [not null]
+  indexes { (id_avenant, id_contrat) [unique] }
+  Note: "Loyer courant derive du dernier avenant APPROUVE ou APPLIQUE de date_effet <= date consideree (approbation finale), par champ. CONTRAT.loyer_mensuel conserve la valeur initiale. Echeances engagees protegees."
+}
+
+Table resiliation {
+  id_resiliation bigint [pk]
+  id_contrat bigint [not null]
+  id_utilisateur_initiateur bigint [not null]
+  motif_resiliation varchar(40) [not null, note: "IMPAYES, ACCORD_AMIABLE, AUTRE"]
+  fondement_contractuel text
+  date_demande datetime [not null]
+  date_notification datetime
+  date_limite_regularisation date
+  date_effet_confirmee date
+  date_decision datetime
+  statut_resiliation varchar(25) [not null, note: "DEMANDEE, EN_COURS, SUSPENDUE, CONFIRMEE, REFUSEE, ANNULEE"]
+  reference_justificatif varchar(255)
+  commentaire text
+  Note: "Pour impayes: pas d acceptation locataire exigee; la confirmation exige les conditions contractuelles ET legales applicables et des justificatifs. Ne pas rendre le bien libre sans liberation effective."
+}
+
+Table preavis {
+  id_preavis bigint [pk]
+  date_notification datetime
+  date_depart_proposee date
+  date_depart_confirmee date
+  motif text
+  statut_preavis text
+  id_utilisateur bigint [not null]
+  id_contrat bigint [not null]
+}
+
+Table moyen_encaissement {
+  id_moyen bigint [pk]
+  est_actif boolean
+  id_utilisateur bigint [not null]
+  Note: "Generalisation exclusive (X) : un moyen est soit moyen_mobile, soit moyen_bancaire, jamais les deux (a garantir par controle applicatif ou trigger). type_moyen supprime : le sous-type porte l information."
+}
+
+Table moyen_mobile {
+  id_moyen bigint [pk]
+  operateur text
+  numero_reception text
+}
+
+Table moyen_bancaire {
+  id_moyen bigint [pk]
+  banque text
+  rib text
+  titulaire_compte text
+}
+
+Table echeance {
+  id_contrat bigint [not null]
+  periode varchar(7) [not null, note: "Format AAAA-MM"]
+  date_echeance date
+  montant_loyer bigint
+  montant_charges bigint
+  indexes { (id_contrat, periode) [pk] }
+  Note: "ARB-03 : une echeance engagee (affectation validee) est immuable. Sans mecanisme de regularisation, avenant retroactif impactant une echeance engagee refuse. Prorata loyer : jours calendaires reels, arrondi demi-superieur a 1 Ar ; charges non tranchees. Une seule echeance par contrat et periode; statut derive."
+}
+
+Table paiement {
+  id_paiement bigint [pk]
+  date_declaration datetime
+  date_paiement date
+  montant_declare bigint
+  montant_valide bigint
+  mode_paiement varchar(30) [note: "ESPECES, VIREMENT, MOBILE_MONEY, CHEQUE"]
+  reference_transaction text
+  mode_saisie text
+  statut_paiement varchar(20) [note: "DECLARE, VALIDE, REFUSE, ANNULE, CONTESTE"]
+  date_validation datetime
+  commentaire_validation text
+  id_contrat bigint [not null]
+  id_utilisateur bigint [not null]
+  id_utilisateur_validateur bigint
+  id_moyen bigint
+  Note: "Non acquitte avant validation par le proprietaire. Moyen d encaissement (facultatif, absent pour les especes) du proprietaire du bien."
+  indexes { (id_paiement, id_contrat) [unique] }
+}
+
+Table affecter {
+  id_paiement bigint [not null]
+  id_contrat bigint [not null]
+  periode varchar(7) [not null]
+  montant_affecte bigint [not null]
+  indexes { (id_paiement, id_contrat, periode) [pk] }
+  Note: "Paiement valide et echeance du meme contrat. FK composite (id_paiement,id_contrat) vers paiement UNIQUE (id_paiement,id_contrat)."
+}
+
+Table justificatif_paiement {
+  id_justificatif bigint [pk]
+  chemin_fichier text
+  date_depot datetime
+  type_justificatif text
+  id_paiement bigint [not null]
+}
+
+Table document_financier {
+  id_document_financier bigint [pk]
+  reference_document varchar(80) [unique]
+  date_generation datetime
+  chemin_fichier text
+  statut_document text
+  Note: "Generalisation exclusive totale (XT) : tout document est soit un recu (paiement), soit une quittance (echeance). Plus de XOR ni de type_document_financier : le sous-type porte l information."
+}
+
+Table recu {
+  id_document_financier bigint [pk]
+  id_paiement bigint [not null]
+}
+
+Table quittance {
+  id_document_financier bigint [pk]
+  id_contrat bigint [not null]
+  periode varchar(7) [not null]
+  Note: "Echeance quittancee = (id_contrat, periode). Contrat de la quittance = contrat du paiement/propriétaire du bien (CI-C4)."
+}
+
+Table depot_garantie {
+  id_depot bigint [pk]
+  montant_prevu bigint
+  id_contrat bigint [not null, unique]
+  Note: "Montants recu, retenu, restitue et statut calcules depuis mouvement_depot (statut CONFIRME)."
+}
+
+Table mouvement_depot {
+  id_mouvement bigint [pk]
+  id_mouvement_corrige bigint [note: "Mouvement d origine lors d une contrepassation ; type identique, montant cumule des correctifs <= montant initial. Inversion comptable issue du lien, sans RESTITUTION fictive."]
+  id_depot bigint [not null]
+  id_utilisateur_saisie bigint [not null]
+  type_mouvement varchar(30) [not null, note: "VERSEMENT, RETENUE, RESTITUTION, TRANSFERT_SORTANT, TRANSFERT_ENTRANT"]
+  montant bigint [not null, note: "Entier MGA strictement positif"]
+  date_mouvement datetime [not null]
+  reference_operation varchar(100) [not null]
+  motif text
+  chemin_justificatif text
+  statut_mouvement varchar(20) [not null, note: "EN_ATTENTE, CONFIRME, ANNULE. ANNULE reserve aux mouvements non confirmes."]
+  motif_annulation text
+  Note: "Transfert : deux mouvements miroir atomiques. Contrepassation : sens inverse determine par id_mouvement_corrige, meme type que l original, jamais comptabilise comme restitution ou versement ordinaire; controles transactionnels."
+}
+
+Table etat_des_lieux {
+  id_etat_lieux bigint [pk]
+  type_etat_lieux text
+  date_etat_lieux date
+  observations text
+  remarques_locataire text
+  date_contestation datetime
+  chemin_document text
+  id_contrat bigint [not null]
+  Note: "Etat des lieux de sortie non requis si le contrat a un successeur."
+}
+
+Table solde_fin_contrat {
+  id_solde bigint [pk]
+  date_calcul datetime
+  total_sommes_dues bigint
+  total_paiements_valides bigint
+  montant_restitution_depot bigint
+  montant_restant bigint
+  statut_solde varchar(20) [not null, note: "CALCULE, FIGE"]
+  id_contrat bigint [not null, unique]
+  Note: "D-21 Option A V1: total_sommes_dues = loyers/charges exigibles; total_paiements_valides = paiements affectes valides; montant_restant = MAX(0, dues - valides); montant_restitution_depot INDEPENDANT, jamais compense en V1. FIGE bloque tout changement."
+}
+
+Table notification {
+  id_notification bigint [pk]
+  id_utilisateur bigint [not null]
+  categorie_notification varchar(50) [not null]
+  date_creation datetime [not null]
+  date_lecture datetime
+  canal varchar(25)
+  contenu text
+  statut_notification varchar(25) [not null]
+  id_contrat bigint
+  id_demande bigint
+  id_paiement bigint
+  id_visite bigint
+  Note: "ARB-06/11 : notifications generales V1, contexte facultatif et explicite (4 FK nullables remplacent reference_contexte). CI-X1 : au plus un contexte renseigne (CHECK a ecrire). Autorisation sur le destinataire a reverifier a l ouverture. RAPPEL distinct V2."
+}
+
+Table rappel {
+  id_rappel bigint [pk]
+  type_rappel text
+  date_creation datetime
+  date_prevue datetime
+  date_envoi datetime
+  statut_rappel text
+  canal text
+  message text
+  est_lue boolean
+  id_utilisateur bigint [not null]
+  id_contrat bigint [not null]
+  periode varchar(7)
+  Note: "Si periode renseignee : rappel d echeance; sinon rappel de contrat."
+}
+
+Table historique_operation {
+  id_historique bigint [pk]
+  type_operation text
+  date_operation datetime
+  description text
+  origine_operation text
+  id_utilisateur bigint
+  id_contrat bigint
+  id_paiement bigint
+  id_bien bigint
+  Note: "Journal d audit. type_objet/reference_objet remplaces par 3 FK nullables ; CI-X2 : au plus un objet renseigne (CHECK a ecrire). Autres objets rattaches via leur contrat."
+}
+
+// ---------- RELATIONS ----------
+Ref: utilisateur.id_role > role.id_role
+Ref: invitation.id_utilisateur > utilisateur.id_utilisateur
+Ref: invitation.id_contrat > contrat.id_contrat
+Ref: invitation.id_utilisateur_invite >? utilisateur.id_utilisateur
+Ref: bien.id_utilisateur > utilisateur.id_utilisateur
+Ref: photo_bien.id_bien > bien.id_bien
+Ref: annonce.id_bien > bien.id_bien
+Ref: visite.id_utilisateur > utilisateur.id_utilisateur
+Ref: visite.id_annonce > annonce.id_annonce
+Ref: demande_location.id_utilisateur > utilisateur.id_utilisateur
+Ref: demande_location.id_annonce > annonce.id_annonce
+Ref: document_candidature.id_demande > demande_location.id_demande
+Ref: demande_location.id_demande ?-? contrat.id_demande
+Ref: contrat.id_bien > bien.id_bien
+Ref: contrat.id_contrat ?-? contrat.id_contrat_precedent
+Ref: prolongation.id_prolongation ?-? contrat.id_prolongation_origine
+Ref: participer.id_utilisateur > utilisateur.id_utilisateur
+Ref: participer.id_contrat > contrat.id_contrat
+Ref: document_contrat.id_contrat > contrat.id_contrat
+Ref: document_contrat.(id_avenant, id_contrat) >? avenant.(id_avenant, id_contrat)
+Ref: prolongation.id_utilisateur > utilisateur.id_utilisateur
+Ref: prolongation.id_contrat > contrat.id_contrat
+Ref: prolongation.id_utilisateur_decideur >? utilisateur.id_utilisateur
+Ref: avenant.id_contrat > contrat.id_contrat
+Ref: resiliation.id_contrat > contrat.id_contrat
+Ref: resiliation.id_utilisateur_initiateur > utilisateur.id_utilisateur
+Ref: preavis.id_utilisateur > utilisateur.id_utilisateur
+Ref: preavis.id_contrat > contrat.id_contrat
+Ref: moyen_encaissement.id_utilisateur > utilisateur.id_utilisateur
+Ref: echeance.id_contrat > contrat.id_contrat
+Ref: paiement.id_contrat > contrat.id_contrat
+Ref: paiement.id_utilisateur > utilisateur.id_utilisateur
+Ref: paiement.id_utilisateur_validateur >? utilisateur.id_utilisateur
+Ref: paiement.id_moyen >? moyen_encaissement.id_moyen
+Ref: affecter.(id_paiement, id_contrat) > paiement.(id_paiement, id_contrat)
+Ref: affecter.(id_contrat, periode) > echeance.(id_contrat, periode)
+Ref: justificatif_paiement.id_paiement > paiement.id_paiement
+Ref: contrat.id_contrat - depot_garantie.id_contrat
+Ref: mouvement_depot.id_depot > depot_garantie.id_depot
+Ref: mouvement_depot.id_utilisateur_saisie > utilisateur.id_utilisateur
+Ref: etat_des_lieux.id_contrat > contrat.id_contrat
+Ref: contrat.id_contrat - solde_fin_contrat.id_contrat
+Ref: notification.id_utilisateur > utilisateur.id_utilisateur
+Ref: rappel.id_utilisateur > utilisateur.id_utilisateur
+Ref: rappel.id_contrat > contrat.id_contrat
+Ref: rappel.(id_contrat, periode) >? echeance.(id_contrat, periode)
+Ref: historique_operation.id_utilisateur >? utilisateur.id_utilisateur
+Ref: mouvement_depot.id_mouvement_corrige >? mouvement_depot.id_mouvement
+Ref: contrat.id_contrat - contrat_repris.id_contrat
+Ref: accepter.(id_contrat, numero_version) > document_contrat.(id_contrat, numero_version)
+Ref: accepter.id_utilisateur > utilisateur.id_utilisateur
+Ref: moyen_encaissement.id_moyen - moyen_mobile.id_moyen
+Ref: moyen_encaissement.id_moyen - moyen_bancaire.id_moyen
+Ref: document_financier.id_document_financier - recu.id_document_financier
+Ref: recu.id_paiement > paiement.id_paiement
+Ref: document_financier.id_document_financier - quittance.id_document_financier
+Ref: quittance.(id_contrat, periode) > echeance.(id_contrat, periode)
+Ref: notification.id_contrat >? contrat.id_contrat
+Ref: notification.id_demande >? demande_location.id_demande
+Ref: notification.id_paiement >? paiement.id_paiement
+Ref: notification.id_visite >? visite.id_visite
+Ref: historique_operation.id_contrat >? contrat.id_contrat
+Ref: historique_operation.id_paiement >? paiement.id_paiement
+Ref: historique_operation.id_bien >? bien.id_bien

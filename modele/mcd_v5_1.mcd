@@ -1,0 +1,186 @@
+% ============================================================================
+% BAIL MANAGER — MCD v5.1 MERISE — SOURCE A TESTER (révision de la source de contrôle v4.14)
+% v5.1 : modification textuelle verifiee statiquement. Compilation Mocodo v5.1 non executee ; non verifie : dbdiagram.io, MariaDB.
+%
+% ECARTS AU STRICT CORRIGES (v4.14 -> v5.0)
+% E1  ACCEPTATION_CONTRAT (entité sans identifiant propre, dont le 1er attribut entrait
+%     dans la clé) est remplacée par l'association N,N ACCEPTER (DOCUMENT_CONTRAT x UTILISATEUR).
+% E2  Fausses clés étrangères supprimées : NOTIFICATION.reference_contexte_notification,
+%     HISTORIQUE_OPERATION.type_objet/reference_objet -> associations 0,1 explicites.
+% E3 (v5.1) Association PRODUIRE retablie pour tracer explicitement quelle prolongation a produit un contrat successeur (0,1 de part et d autre).
+% E4  DOCUMENT_FINANCIER : généralisation exclusive totale RECU / QUITTANCE
+%     (remplace le XOR en commentaire et l'attribut type_document_financier).
+% E5  MOYEN_ENCAISSEMENT : spécialisation exclusive MOYEN_MOBILE / MOYEN_BANCAIRE
+%     (remplace type_moyen et les attributs facultatifs selon le type).
+% E6  CONTRAT : spécialisation CONTRAT_REPRIS (date_reprise, solde_reprise).
+%
+% DONNEES FIGEES CONSERVEES (instantanés datés, pas des dérivés recalculables) :
+%   SOLDE_FIN_CONTRAT.total_* / montant_* (D-14) ; ECHEANCE.montant_loyer / montant_charges_echeance (CTR-10, ARB-03).
+%
+% CONTRAINTES D'INTEGRITE NON EXPRIMABLES PAR LES CARDINALITES (a porter au MLD/applicatif)
+% -- Exclusions entre associations 0,1 d'une même entité
+% CI-X1 NOTIFICATION : au plus un contexte parmi INFORMER, PREVENIR, AVISER, CONVOQUER.
+% CI-X2 HISTORIQUE_OPERATION : au plus un objet parmi AUDITER, CONSIGNER, JOURNALISER.
+% -- Egalités de chemin (cycles du schéma)
+% CI-C1 CONTRAT.bien = bien de l'ANNONCE de la DEMANDE_LOCATION d'ABOUTIR (LOUER / ABOUTIR / RECEVOIR / ANNONCER).
+% CI-C2 PAIEMENT.contrat = contrat des ECHEANCE affectées (RATTACHER / AFFECTER / GENERER) ; PAI-02.
+% CI-C3 RAPPEL.contrat = contrat de l'ECHEANCE alertée (MOTIVER / ALERTER / GENERER).
+% CI-C4 QUITTANCE : echeance d'un contrat dont le propriétaire est celui du bien ; RECU : paiement idem.
+% CI-C5 ACCEPTER : l'utilisateur répondant est PARTICIPANT du contrat du DOCUMENT_CONTRAT ; version = version courante.
+% CI-C6 EMPLOYER : moyen possédé par le propriétaire du bien (CONFIGURER / GERER), compatible avec mode_paiement ; ESPECES sans moyen.
+% CI-C7 DOCUMENT_CONTRAT / AVENANT (FORMALISER) : même contrat (DOC-02).
+% CI-C8 PRODUIRE : si une prolongation produit un contrat successeur, cette prolongation est ACCEPTEE, le successeur PRECEDE le contrat source, les deux contrats portent sur le meme BIEN, motif_creation = PROLONGATION et date_debut = date_application. Les demandes acceptees sans successeur active restent possibles.
+% -- Règles métier (valeurs, états, calculs)
+% CTR-01 brouillon : 0 participant ; avant EN_ATTENTE_ACCEPTATIONS : >=1 participant, 100 pct, un seul payeur principal.
+% CTR-03/07/11 intervalles demi-ouverts sans chevauchement ; PRECEDER sans cycle, même BIEN ; bascule ACTIF->REMPLACE atomique ; un seul successeur.
+% CTR-10/ECH-03/ECH-05/ECH-06/D-22 échéances jamais supprimées, sans statut stocké ; engagée = immuable ; prorata du LOYER : jours calendaires réels, arrondi à l'ariary (0,5 vers le haut), décimal ; charges non proratisées sans validation explicite.
+% CTR-12 date_fin_effective = date événementielle (borne exclusive), distincte de date_fin_prevue.
+% DOC-02/AVE-03 version principale = max(numero_version) sans avenant ; version d'avenant = max par avenant.
+% EDL-01/02 état des lieux courant = le plus récent par type et contrat.
+% DEP-04 contrepassation d'un mouvement CONFIRME : même type, sens inverse, cumul <= montant initial, sans cycle (CORRIGER).
+% PAI-09 un paiement contesté avant validation ne compte pas ; un encaissement VALIDE reste inchangé sans correction explicite.
+% FIN-03 SOLDE_FIN_CONTRAT : instantané à date_calcul, sans mutation après FIGE.
+% ARB-01 deux avenants APPROUVE/APPLIQUE d'un même contrat ne modifient pas le même champ à la même date.
+% ARB-10 un seul bien : une seule ANNONCE PUBLIEE ; pas d'ACTIF vers ANNULE ; pas deux occupations ACTIF concurrentes.
+% ANN-02 annonce bloquée si successeur en attente. RES-01 aucune résiliation ni expulsion automatique.
+% ============================================================================
+
+:
+RESILIER, 0N CONTRAT, 11 RESILIATION
+:
+:
+PROLONGER, 0N CONTRAT, 11 PROLONGATION
+ETAT_DES_LIEUX: id_etat_lieux, type_etat_lieux, date_etat_lieux, observations, remarques_locataire, date_contestation, chemin_document
+RAPPEL: id_rappel, type_rappel, date_creation_rappel, date_prevue, date_envoi_rappel, statut_rappel, canal, message, est_lue
+ALERTER, 0N ECHEANCE, 01 RAPPEL
+ECHEANCE: periode, date_echeance, montant_loyer, montant_charges_echeance
+QUITTANCER, 0N ECHEANCE, 11 QUITTANCE
+QUITTANCE:
+:
+MODIFIER, 0N CONTRAT, 11 AVENANT
+
+:
+DECIDER, 0N UTILISATEUR, 01 PROLONGATION
+PROLONGATION: id_prolongation, date_application_prolongation, date_demande_prolongation, date_fin_souhaitee, nouvelle_date_fin, nouveau_loyer_prolongation, nouvelles_charges_prolongation, nouveau_jour_echeance_prolongation, nouvelle_duree_preavis, date_decision_prolongation, motif_refus_prolongation, statut_prolongation
+:
+PRODUIRE, 01 PROLONGATION, 01 CONTRAT
+CONSTATER, 0N CONTRAT, 11 ETAT_DES_LIEUX
+MOTIVER, 0N CONTRAT, 11 RAPPEL
+GENERER, 0N CONTRAT, _11 ECHEANCE
+:
+:
+/\ CONTRAT <- CONTRAT_REPRIS
+/XT\ DOCUMENT_FINANCIER <- RECU, QUITTANCE
+AVENANT: id_avenant, type_avenant, motif_avenant, date_creation_avenant, date_effet, statut_avenant, nouveau_loyer_avenant, nouvelles_charges_avenant, nouveau_jour_echeance_avenant, date_validation_avenant
+
+RESILIATION: id_resiliation, motif_resiliation, fondement_contractuel, date_demande_resiliation, date_notification_resiliation, date_limite_regularisation, date_effet_confirmee, date_decision_resiliation, statut_resiliation, reference_justificatif, commentaire_resiliation
+INITIER, 0N UTILISATEUR, 11 PROLONGATION
+UTILISER, 0N UTILISATEUR, 01 INVITATION
+INVITATION: id_invitation, email_invite, jeton_hash, date_envoi_invitation, date_expiration, date_utilisation, date_annulation
+CONCERNER, 0N CONTRAT, 11 INVITATION
+CONTRAT: id_contrat, reference_contrat, motif_creation, date_creation_contrat, date_activation, date_debut, date_fin_prevue, loyer_mensuel, montant_charges_contrat, jour_echeance, duree_preavis, statut_contrat, date_fin_effective, date_liberation_effective
+:
+PRECEDER, 01 [ancien] CONTRAT, 01 [nouveau] CONTRAT
+AFFECTER, 0N PAIEMENT, 0N ECHEANCE: montant_affecte
+CONTRAT_REPRIS: date_reprise, solde_reprise
+RECU:
+DOCUMENT_FINANCIER: id_document_financier, reference_document, date_generation_document_financier, chemin_fichier_document_financier, statut_document_financier
+FORMALISER, 0N AVENANT, 01 DOCUMENT_CONTRAT
+
+:
+DECLENCHER, 0N UTILISATEUR, 11 RESILIATION
+:
+:
+CLOTURER, 01 CONTRAT, 11 SOLDE_FIN_CONTRAT
+AUDITER, 0N CONTRAT, 01 HISTORIQUE_OPERATION
+RATTACHER, 0N CONTRAT, 11 PAIEMENT
+:
+:
+:
+MATERIALISER, 0N CONTRAT, _11 DOCUMENT_CONTRAT
+DOCUMENT_CONTRAT: numero_version, type_document_contrat, date_generation_document_contrat, chemin_fichier_document_contrat
+:
+
+GARANTIR, 01 CONTRAT, 11 DEPOT_GARANTIE
+NOTIFIER, 0N CONTRAT, 11 PREAVIS
+:
+PARTICIPER, 0N UTILISATEUR, 0N CONTRAT: date_entree, date_sortie, pourcentage_contribution, est_payeur_principal
+AVERTIR, 0N UTILISATEUR, 11 RAPPEL
+SOLDE_FIN_CONTRAT: id_solde, date_calcul, total_sommes_dues, total_paiements_valides, montant_restitution_depot, montant_restant, statut_solde
+HISTORIQUE_OPERATION: id_historique, type_operation, date_operation, description_historique_operation, origine_operation
+:
+ATTESTER, 0N PAIEMENT, 11 RECU
+INFORMER, 0N CONTRAT, 01 NOTIFICATION
+ABOUTIR, 01 DEMANDE_LOCATION, 01 CONTRAT
+ACCEPTER, 0N DOCUMENT_CONTRAT, 0N UTILISATEUR: mode_acceptation, statut_acceptation, date_reponse, motif_refus_acceptation_contrat
+LOUER, 0N BIEN, 11 CONTRAT
+
+DEPOT_GARANTIE: id_depot, montant_prevu
+PREAVIS: id_preavis, date_notification_preavis, date_depart_proposee, date_depart_confirmee, motif_preavis, statut_preavis
+INVITER, 0N UTILISATEUR, 11 INVITATION
+:
+EFFECTUER, 0N UTILISATEUR, 01 HISTORIQUE_OPERATION
+CONSIGNER, 0N PAIEMENT, 01 HISTORIQUE_OPERATION
+:
+PAIEMENT: id_paiement, date_declaration, date_paiement, montant_declare, montant_valide, mode_paiement, reference_transaction, mode_saisie, statut_paiement, date_validation_paiement, commentaire_validation
+:
+:
+:
+GERER, 0N UTILISATEUR, 11 BIEN
+:
+
+TRACER, 0N DEPOT_GARANTIE, 11 MOUVEMENT_DEPOT
+EMETTRE, 0N UTILISATEUR, 11 PREAVIS
+:
+UTILISATEUR: id_utilisateur, nom, prenom, email, telephone, mot_de_passe_hash, date_creation_utilisateur, statut_compte, tentatives_echec, date_blocage, jeton_reinitialisation_hash, date_expiration_jeton
+:
+VALIDER, 0N UTILISATEUR, 01 PAIEMENT
+:
+:
+AVISER, 0N PAIEMENT, 01 NOTIFICATION
+:
+DOCUMENT_CANDIDATURE: id_document_candidature, nom_document, type_document_candidature, chemin_fichier_document_candidature, date_depot_document_candidature, statut_document_candidature
+JOURNALISER, 0N BIEN, 01 HISTORIQUE_OPERATION
+BIEN: id_bien, reference_bien, type_bien, description_bien, adresse, ville, surface, nombre_pieces, statut_bien, date_creation_bien
+
+MOUVEMENT_DEPOT: id_mouvement, type_mouvement, montant, date_mouvement, reference_operation, motif_mouvement_depot, chemin_justificatif, statut_mouvement, motif_annulation_mouvement
+SAISIR, 0N UTILISATEUR, 11 MOUVEMENT_DEPOT
+:
+CONFIGURER, 0N UTILISATEUR, 11 MOYEN_ENCAISSEMENT
+:
+:
+ENREGISTRER, 0N UTILISATEUR, 11 PAIEMENT
+:
+PREVENIR, 0N DEMANDE_LOCATION, 01 NOTIFICATION
+DEMANDE_LOCATION: id_demande, date_depot_demande, statut_demande, message_candidat, date_decision_demande_location, commentaire_decision
+JOINDRE, 0N DEMANDE_LOCATION, 11 DOCUMENT_CANDIDATURE
+ANNONCER, 0N BIEN, 11 ANNONCE
+ILLUSTRER, 0N BIEN, 11 PHOTO_BIEN
+
+CORRIGER, 0N [initial] MOUVEMENT_DEPOT, 01 [correctif] MOUVEMENT_DEPOT
+ASSUMER, 11 UTILISATEUR, 0N ROLE
+MOYEN_ENCAISSEMENT: id_moyen, est_actif
+EMPLOYER, 0N MOYEN_ENCAISSEMENT, 01 PAIEMENT
+JUSTIFIER, 0N PAIEMENT, 11 JUSTIFICATIF_PAIEMENT
+DISTRIBUER, 0N UTILISATEUR, 11 NOTIFICATION
+NOTIFICATION: id_notification, categorie_notification, date_creation_notification, date_lecture_notification, canal_notification, contenu_notification, statut_notification
+DEMANDER, 0N UTILISATEUR, 11 VISITE
+:
+DEPOSER, 0N UTILISATEUR, 11 DEMANDE_LOCATION
+RECEVOIR, 0N ANNONCE, 11 DEMANDE_LOCATION
+ANNONCE: id_annonce, titre, description_annonce, loyer_demande, charges_annonce, date_disponibilite, date_publication, statut_annonce
+PHOTO_BIEN: id_photo, chemin_fichier_photo_bien, description_photo_bien, date_ajout
+
+ROLE: id_role, libelle_role
+MOYEN_MOBILE: operateur, numero_reception
+/X\ MOYEN_ENCAISSEMENT <- MOYEN_MOBILE, MOYEN_BANCAIRE
+MOYEN_BANCAIRE: banque, rib, titulaire_compte
+JUSTIFICATIF_PAIEMENT: id_justificatif, chemin_fichier_justificatif_paiement, date_depot_justificatif_paiement, type_justificatif
+:
+:
+CONVOQUER, 0N VISITE, 01 NOTIFICATION
+VISITE: id_visite, date_demande_visite, date_visite_souhaitee, date_visite_prevue, statut_visite, commentaire_visite
+:
+SOLLICITER, 0N ANNONCE, 11 VISITE
+:
+:
